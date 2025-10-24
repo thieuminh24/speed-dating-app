@@ -26,13 +26,12 @@ type OptionGroup = {
 interface SelectFormProps {
   name: string;
   control: Control<any, any>;
-  placeholder?: string;
+  placeholder: string;
   label?: string;
   helperText?: string;
-  className?: string; // 👉 dùng cho SelectTrigger
+  className?: string;
   disabled?: boolean;
-
-  options?: Option[];
+  options: Option[];
   groupedOptions?: OptionGroup[];
 }
 
