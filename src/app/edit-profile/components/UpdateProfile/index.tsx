@@ -5,13 +5,7 @@ import UpdateProfileCategory from "./ProfileCategory";
 import { ProfilePromptsForm } from "./ProfileCategory/ProfilePromptsForm";
 import AboutMeForm from "./ProfileCategory/AboutMeForm";
 import WorkAndEducationForm from "./ProfileCategory/WorkAndEducationForm";
-
-const ProfileSection = [
-  { title: "My profile prompts" },
-  { title: "About me" },
-  { title: "My Work & Education" },
-  { title: "My basic" },
-];
+import { ProfileBasics } from "./ProfileCategory/MyBasic/Index";
 
 const UpdateProfile = () => {
   return (
@@ -24,6 +18,7 @@ const UpdateProfile = () => {
       <ProfilePromptsForm />
       <AboutMeForm />
       <WorkAndEducationForm />
+      <ProfileBasics />
     </div>
   );
 };

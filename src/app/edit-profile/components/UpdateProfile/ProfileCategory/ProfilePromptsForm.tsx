@@ -7,7 +7,6 @@ import UpdateProfileCategory from ".";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import TextareaForm from "@/components/forms/TextareaForm";
 import { useEffect, useRef, useState } from "react";
-import SelectForm from "@/components/forms/SelectForm";
 import {
   Select,
   SelectContent,
@@ -125,7 +124,7 @@ export function ProfilePromptsForm() {
           ))}
           {availableOptions.length !== 0 && (
             <div className="w-full flex items-center justify-center">
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 bg-white rounded-xl ">
                 <Select onValueChange={handleSelectPrompt}>
                   <SelectTrigger className="w-[280px]">
                     <Plus className="h-4 w-4 mr-2" />

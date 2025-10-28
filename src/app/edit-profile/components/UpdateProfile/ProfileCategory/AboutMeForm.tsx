@@ -21,7 +21,7 @@ const AboutMeForm = () => {
       <TextareaForm
         control={control}
         name={`aboutMe`}
-        className="rounded-3xl focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none max-w-[400px] p-4 border-gray-300"
+        className="rounded-3xl focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none max-w-[400px] p-4 border-gray-300 bg-white"
         maxlength={160}
       />
     </UpdateProfileCategory>

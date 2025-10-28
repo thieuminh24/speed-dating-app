@@ -1,0 +1,15 @@
+export enum BasicProfileField {
+  HEIGHT = "height",
+  EXERCISE = "exercise",
+  EDUCATION_LEVEL = "educationLevel",
+  DRINKING = "drinking",
+  SMOKING = "smoking",
+  LOOKING_FOR = "lookingFor",
+  KIDS = "kids",
+  STAR_SIGN = "starSign",
+  POLITICS = "politics",
+  RELIGION = "religion",
+  GENDER = "gender",
+  PLACES_LIVED = "placesLived",
+  WHERE_FROM = "whereFrom",
+}

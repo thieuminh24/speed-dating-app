@@ -42,8 +42,7 @@ const CardInfo = ({ data }: { data: User }) => {
           ></div>
           <div className="bg-rose-200 h-full flex items-start justify-center text-3xl w-1/2 px-10 flex-col gap-2">
             <FaMarsStrokeUp size={40} />
-
-            <div className="flex  items-center gap-4">
+            <div className="flex items-center gap-4">
               <h2 className="text-4xl font-extrabold">{`${data.name}, ${data.age}`}</h2>
               <Badge
                 variant="secondary"
@@ -53,7 +52,7 @@ const CardInfo = ({ data }: { data: User }) => {
                 Photo Verified
               </Badge>
             </div>
-            <p>Thanh Hoa</p>
+            <p>{data.location}</p>
           </div>
         </div>
       </SwiperSlide>
@@ -61,13 +60,11 @@ const CardInfo = ({ data }: { data: User }) => {
         <div className="bg-rose-200 h-full flex items-center justify-center text-3xl">
           <div className="flex flex-col items-center gap-2 px-10">
             <ImQuotesLeft size={22} />
-            <p className="text-[20px] font-extrabold">
-              {`About ${data.name}`}{" "}
-            </p>
+            <p className="text-[20px] font-extrabold">{`About ${data.name}`}</p>
             <div className="flex gap-2">
               {data.badge.map((badge, idx) => (
-                <Badge className="bg-rose-300 text-gray-950 ">
-                  {badge.icon} {badge.data}{" "}
+                <Badge key={idx} className="bg-rose-300 text-gray-950">
+                  {badge.icon} {badge.data}
                 </Badge>
               ))}
             </div>
@@ -76,8 +73,13 @@ const CardInfo = ({ data }: { data: User }) => {
       </SwiperSlide>
       <SwiperSlide>
         <div className="h-full w-full flex">
-          <div className="bg-[url('/image/demo1.jpg')] bg-cover bg-center w-1/2 h-full  flex items-center justify-center text-3xl"></div>
-          <div className="bg-[url('/image/demo2.jpg')] bg-cover bg-center w-1/2 h-full  flex items-center justify-center text-3xl"></div>
+          {data.images.slice(1, 3).map((image, idx) => (
+            <div
+              key={idx}
+              className="bg-cover bg-center w-1/2 h-full"
+              style={{ backgroundImage: `url(${image})` }}
+            ></div>
+          ))}
         </div>
       </SwiperSlide>
     </Swiper>

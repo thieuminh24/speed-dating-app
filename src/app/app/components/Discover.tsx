@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-
+import React, { useState, useEffect } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -8,102 +7,78 @@ import {
 import { FaRegHeart } from "react-icons/fa";
 import { IoMdClose } from "react-icons/io";
 import { EffectCards } from "swiper/modules";
-import { LuRuler } from "react-icons/lu";
-import { TbGlass, TbZodiacAquarius } from "react-icons/tb";
-
 import { Swiper, SwiperSlide } from "swiper/react";
 import CardInfo, { User } from "./CardInfo";
+import { LuRuler } from "react-icons/lu";
+import { TbGlass, TbZodiacAquarius } from "react-icons/tb";
+import { getSwipeUsers, swipeUser } from "@/services/match/match.api";
 
-// ...existing code...
-const users: User[] = [
-  {
-    id: "1",
-    name: "Quynh Nhu",
-    avatar: "/image/demo.jpg",
-    age: 18,
-    location: "Thanh Hoa",
-    badge: [
-      { data: "168 cm", icon: <LuRuler /> },
-      { data: "Socially", icon: <TbGlass /> },
-      { data: "Aquarius", icon: <TbZodiacAquarius /> },
-    ],
-    images: ["/image/demo.jpg", "/image/demo1.jpg", "/image/demo2.jpg"],
-  },
-  {
-    id: "2",
-    name: "Như Quỳnh",
-    avatar: "/image/demo2.jpg",
-    age: 22,
-    location: "Ha Noi",
-    badge: [
-      { data: "160 cm", icon: <LuRuler /> },
-      { data: "Occasionally", icon: <TbGlass /> },
-      { data: "Leo", icon: <TbZodiacAquarius /> },
-    ],
-    images: ["/image/demo3.jpg", "/image/demo4.jpg", "/image/demo5.jpg"],
-  },
-  {
-    id: "3",
-    name: "Bao Chau",
-    avatar: "/image/demo1.jpg",
-    age: 20,
-    location: "Da Nang",
-    badge: [
-      { data: "170 cm", icon: <LuRuler /> },
-      { data: "Never", icon: <TbGlass /> },
-      { data: "Pisces", icon: <TbZodiacAquarius /> },
-    ],
-    images: ["/image/demo6.jpg", "/image/demo7.jpg", "/image/demo8.jpg"],
-  },
-  {
-    id: "4",
-    name: "Hoang Nam",
-    avatar: "/image/demo3.jpg",
-    age: 25,
-    location: "Ho Chi Minh",
-    badge: [
-      { data: "175 cm", icon: <LuRuler /> },
-      { data: "Frequently", icon: <TbGlass /> },
-      { data: "Gemini", icon: <TbZodiacAquarius /> },
-    ],
-    images: ["/image/demo9.jpg", "/image/demo10.jpg", "/image/demo11.jpg"],
-  },
-];
-// ...existing code...
+// Hàm ánh xạ dữ liệu API sang kiểu User
+const mapApiUserToUser = (apiUser: any): User => ({
+  id: apiUser._id,
+  name: apiUser.name, // Lấy từ đầu tiên của about làm tên
+  avatar: apiUser.photos[0] || "/image/default.jpg", // Ảnh đầu tiên hoặc ảnh mặc định
+  age: 25, // API không cung cấp tuổi, đặt mặc định hoặc cần thêm logic
+  location: apiUser.places.live,
+  badge: [
+    ...(apiUser.basics.height
+      ? [{ data: apiUser.basics.height, icon: <LuRuler /> }]
+      : []),
+    ...(apiUser.basics.drinking
+      ? [{ data: apiUser.basics.drinking, icon: <TbGlass /> }]
+      : []),
+    ...(apiUser.basics.starSign
+      ? [{ data: apiUser.basics.starSign, icon: <TbZodiacAquarius /> }]
+      : []),
+  ],
+  images: apiUser.photos,
+});
 
 const Discover = () => {
-  const [interest, setInterest] = useState<string | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [swiperRef, setSwiperRef] = useState<any>(null);
+  const currentUserId = "68facd3772bb5ba62dc72763"; // Thay bằng ID người dùng hiện tại, lấy từ context/auth
 
-  const handlePass = () => {
-    if (swiperRef) swiperRef.slideNext();
+  // Gọi API để lấy danh sách người dùng
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const apiUsers = await getSwipeUsers(currentUserId);
+        const mappedUsers = apiUsers.map(mapApiUserToUser);
+        setUsers(mappedUsers);
+      } catch (error) {
+        console.error("Error fetching swipe users:", error);
+      }
+    };
+    fetchUsers();
+  }, [currentUserId]);
+
+  const handlePass = async () => {
+    if (swiperRef && users.length > 0) {
+      const currentUser = users[swiperRef.activeIndex];
+      try {
+        await swipeUser(currentUserId, currentUser.id, false); // Gọi API swipe với like = false
+        swiperRef.slideNext();
+      } catch (error) {
+        console.error("Error passing user:", error);
+      }
+    }
   };
 
-  const handleLike = () => {
-    if (swiperRef) swiperRef.slideNext();
+  const handleLike = async () => {
+    if (swiperRef && users.length > 0) {
+      const currentUser = users[swiperRef.activeIndex];
+      try {
+        await swipeUser(currentUserId, currentUser.id, true);
+        swiperRef.slideNext();
+      } catch (error) {
+        console.error("Error liking user:", error);
+      }
+    }
   };
+
   return (
     <>
-      {/* <h1 className="text-xl font-bold mb-2">Let’s get Couplix</h1>
-            <p className="text-gray-500 mb-6">And who are you interested in?</p> */}
-
-      {/* Options */}
-      {/* <div className="flex flex-col space-y-3 w-48">
-              {["Men", "Women", "Everyone"].map((item) => (
-                <Button
-                  key={item}
-                  onClick={() => setInterest(item)}
-                  className={`w-full rounded-full font-medium cursor-pointer ${
-                    interest === item
-                      ? "bg-rose-400 text-white hover:bg-rose-500"
-                      : "bg-rose-400 text-white hover:bg-rose-500"
-                  }`}
-                >
-                  {item}
-                </Button>
-              ))}
-            </div> */}
-
       <Swiper
         effect="cards"
         grabCursor={true}
@@ -112,7 +87,10 @@ const Discover = () => {
         className="mySwiper w-[1307px] h-[89vh]"
       >
         {users.map((user, index) => (
-          <SwiperSlide className="flex items-center justify-center bg-pink-200 text-xl font-semibold rounded-2xl">
+          <SwiperSlide
+            key={user.id}
+            className="flex items-center justify-center bg-pink-200 text-xl font-semibold rounded-2xl"
+          >
             <CardInfo data={user} />
           </SwiperSlide>
         ))}
@@ -123,7 +101,7 @@ const Discover = () => {
           <TooltipTrigger asChild>
             <div
               onClick={handlePass}
-              className=" right-1/2 translate-x-1/2 w-26 h-26  rounded-full p-2 bg-white shadow-lg flex items-center justify-center border-gray-300 border-2 cursor-pointer hover:scale-110 transition"
+              className="right-1/2 translate-x-1/2 w-26 h-26 rounded-full p-2 bg-white shadow-lg flex items-center justify-center border-gray-300 border-2 cursor-pointer hover:scale-110 transition"
             >
               <IoMdClose size={40} className="text-grey-400" />
             </div>
@@ -137,7 +115,7 @@ const Discover = () => {
           <TooltipTrigger asChild>
             <div
               onClick={handleLike}
-              className=" right-1/2 translate-x-1/2 w-26 h-26  border-2 rounded-full p-2 bg-white shadow-lg flex items-center justify-center hover:scale-110 transition cursor-pointer"
+              className="right-1/2 translate-x-1/2 w-26 h-26 border-2 rounded-full p-2 bg-white shadow-lg flex items-center justify-center hover:scale-110 transition cursor-pointer"
             >
               <FaRegHeart size={40} className="text-red-400" />
             </div>
