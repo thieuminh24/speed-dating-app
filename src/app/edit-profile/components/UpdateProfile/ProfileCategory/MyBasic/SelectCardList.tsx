@@ -23,22 +23,6 @@ export function SelectCardList({
       control={control}
       render={({ field }) => (
         <div className="flex flex-col gap-3">
-          {/* Skip button */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              field.onChange("");
-              onSkip?.();
-            }}
-            className={cn(
-              "w-full rounded-full font-medium border cursor-pointer",
-              !field.value && "border-rose-400 text-black",
-            )}
-          >
-            Skip
-          </Button>
-
           {/* Options */}
           {options.map((opt) => (
             <Button

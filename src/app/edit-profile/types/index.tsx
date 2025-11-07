@@ -1,26 +1,76 @@
-type BasicProfileData = {
-  height: string;
-  exercise: string;
-  educationLevel: string;
-  drinking: string;
-  smoking: string;
-  lookingFor: string;
-  kids: string;
-  starSign: string;
-  politics: string;
-  religion: string;
-  gender: string;
-  placesLived: string;
-  whereFrom: string;
+import {
+  Drinking,
+  EducationLevel,
+  Exercise,
+  Kids,
+  LookingFor,
+  Politics,
+  Religion,
+  Smoking,
+  StarSign,
+} from "../enums";
+
+export type BasicProfileType = {
+  whereFrom?: string;
+  placesLived?: string;
+  gender?: string;
+  height?: number;
+  exercise?: Exercise;
+  educationLevel?: EducationLevel;
+  drinking?: Drinking;
+  smoking?: Smoking;
+  lookingFor?: LookingFor;
+  kids?: Kids;
+  politics?: Politics;
+  religion?: Religion;
+  starSign?: StarSign;
 };
 
-type WorkAndEducationData = {
-  job: {
-    title: string;
-    company: string;
+export type LocationType = {
+  lat: number;
+  lon: number;
+};
+
+export type PromptsType = {
+  prompt: string;
+  answer: string;
+};
+
+export type JobsType = {
+  title: string;
+  company: string;
+};
+
+export type EducationType = {
+  institution: string;
+  graduation: number;
+};
+
+export type UpdateUserType = {
+  aboutMe?: string;
+  dateOfBirth?: Date;
+  photos?: string[];
+  prompts?: PromptsType[];
+  jobsAndEducation?: {
+    jobs?: JobsType[];
+    education?: EducationType[];
   };
-  education: {
-    institution: string;
-    graduation: string;
-  };
+  basic?: BasicProfileData;
+  location?: LocationType;
+};
+
+export type jobsAndEducationType = {
+  jobs?: JobsType[];
+  education?: EducationType[];
+};
+
+export type Profile = {
+  name: string;
+  aboutMe?: string;
+  dateOfBirth?: Date;
+  photos?: string[];
+  prompts?: PromptsType[];
+  jobsAndEducation: jobsAndEducationType;
+  basic: BasicProfileData;
+  location?: LocationType;
 };

@@ -51,7 +51,7 @@ export function HeightSelector({ control, name, onSkip }: HeightSelectorProps) {
         onClick={onSkip}
         className="rounded-full cursor-pointer"
       >
-        Skip
+        Save
       </Button>
     </div>
   );

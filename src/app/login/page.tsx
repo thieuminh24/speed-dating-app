@@ -1,5 +1,6 @@
 "use client";
 
+import RedirectIfAuthenticated from "@/components/common/RedirectIfAuthenticated/RedirectIfAuthenticated";
 import LoginForm from "./LoginForm";
 
 type LoginForm = {
@@ -8,5 +9,11 @@ type LoginForm = {
 };
 
 export default function LoginPage() {
-  return <LoginForm />;
+  return (
+    <>
+      <RedirectIfAuthenticated>
+        <LoginForm />
+      </RedirectIfAuthenticated>
+    </>
+  );
 }

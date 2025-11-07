@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Control, Controller } from "react-hook-form";
 import { Input } from "@/components/ui/input";
+import { Button } from "../ui/button";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 interface InputFormProps {
   name: string;
@@ -9,6 +11,7 @@ interface InputFormProps {
   className?: string;
   placeholder?: string;
   helperText?: string;
+  type?: string;
   props?: any;
 }
 
@@ -19,8 +22,11 @@ const InputForm = ({
   className,
   placeholder,
   helperText,
+  type,
   ...props
 }: InputFormProps) => {
+  const [isVisible, setIsVisible] = useState(false);
+
   return (
     <Controller
       name={name}
@@ -28,12 +34,31 @@ const InputForm = ({
       defaultValue={defaultValue}
       render={({ field, fieldState: { error } }) => (
         <>
-          <Input
-            {...props}
-            className={className}
-            {...field}
-            placeholder={placeholder}
-          />
+          <div className="relative w-full">
+            <Input
+              {...props}
+              className={className}
+              {...field}
+              placeholder={placeholder}
+              type={
+                type === "password" ? (isVisible ? "text" : "password") : type
+              }
+            />
+            {type === "password" && (
+              <Button
+                variant="ghost"
+                type="button"
+                size="icon"
+                onClick={() => setIsVisible((prevState) => !prevState)}
+                className="text-muted-foreground focus-visible:ring-ring/50 absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent top-[3px]"
+              >
+                {isVisible ? <EyeOffIcon size={40} /> : <EyeIcon size={40} />}
+                <span className="sr-only">
+                  {isVisible ? "Hide password" : "Show password"}
+                </span>
+              </Button>
+            )}
+          </div>
           {helperText && (
             <p className="ml-[14px] text-[#8C8C8C] text-xs text-center">
               {helperText}

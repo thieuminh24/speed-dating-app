@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import UpdateProfileCategory from ".";
 import TextareaForm from "@/components/forms/TextareaForm";
+import UpdateProfileCategory from ".";
 
-const AboutMeForm = () => {
+const AboutMeForm = ({ aboutMe = " " }: { aboutMe: string }) => {
   const [isActive, setIsActive] = useState<boolean>(false);
 
-  const { control } = useForm<{ aboutMe: string }>({
+  const { control, setValue } = useForm<{ aboutMe: string }>({
     defaultValues: { aboutMe: "" },
   });
+
+  useEffect(() => {
+    setValue("aboutMe", aboutMe);
+  }, [aboutMe]);
 
   return (
     <UpdateProfileCategory

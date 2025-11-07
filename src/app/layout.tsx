@@ -23,6 +23,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // const { isReady } = useAuthInit();
+
+  // if (!isReady) return <Loading />;
   return (
     <html lang="en">
       <body

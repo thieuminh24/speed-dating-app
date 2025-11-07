@@ -16,7 +16,7 @@ const UpdateProfileCategory = ({
 }: CategoryData) => {
   return (
     <div
-      className={`rounded-2xl py-6 px-6 mt-6 cursor-pointer transition-colors duration-300
+      className={`rounded-2xl py-4 px-4 mt-6 cursor-pointer transition-colors duration-300
         ${isActive ? "bg-gray-100" : "hover:bg-gray-50"} last:mb-20`}
       onClick={onClick}
     >

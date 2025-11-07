@@ -19,7 +19,7 @@ const StepUploadAvatar = ({ control }: StepUploadAvatarProps) => {
       </p>
 
       <ImageUploadForm
-        name="avatar"
+        name="photos"
         control={control}
         label="Upload your photo"
       />

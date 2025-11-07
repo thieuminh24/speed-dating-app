@@ -1,10 +1,13 @@
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import React, { useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 const StepEnterLocation = () => {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null,
   );
+  const { setValue } = useFormContext();
   const [error, setError] = useState<string | null>(null);
 
   const requestLocation = () => {
@@ -18,7 +21,10 @@ const StepEnterLocation = () => {
         const { latitude, longitude } = position.coords;
         setLocation({ lat: latitude, lng: longitude });
         setError(null);
-        console.log("📍 Vị trí hiện tại:", latitude, longitude);
+        setValue("location", {
+          lat: latitude,
+          lon: longitude,
+        });
       },
       (err) => {
         setError("Không thể lấy vị trí: " + err.message);
@@ -44,12 +50,13 @@ const StepEnterLocation = () => {
         height={38}
       />
 
-      <button
+      <Button
+        type="button"
         onClick={requestLocation}
         className="bg-rose-400 text-white font-medium px-6 py-2 rounded-full hover:bg-rose-500 transition"
       >
         Allow location access
-      </button>
+      </Button>
     </div>
   );
 };

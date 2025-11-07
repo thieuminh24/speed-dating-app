@@ -13,8 +13,12 @@ import StepEnterGender from "./Steps/StepEnterGender";
 import StepUploadAvatar from "./Steps/StepUploadAvatar";
 import StepEnterLocation from "./Steps/StepEnterLocation";
 import { useRouter } from "next/navigation";
+import StepEnterEmailAndPassword from "./Steps/StepEnterEmailAndPassword";
+import { register } from "@/services/auth/auth.api";
+import { Spinner, type SpinnerProps } from "@/components/ui/shadcn-io/spinner";
 
 const steps = [
+  StepEnterEmailAndPassword,
   StepEnterName,
   StepEnterBirthday,
   StepEnterGender,
@@ -26,33 +30,58 @@ const RegistrationForm = () => {
   const methods = useForm({
     mode: "onSubmit",
     defaultValues: {
+      email: "",
+      password: "",
       name: "",
       birthDay: "",
       birthMonth: "",
       birthYear: "",
       gender: "",
-      avatar: null,
-      location: "",
+      photos: [],
+      location: { lat: 0, lon: 0 },
     },
   });
 
-  const { handleSubmit, control, getValues } = methods;
+  const { handleSubmit, control, getValues, watch } = methods;
   const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  console.log("Form Values:", watch());
 
   const router = useRouter();
 
   const StepComponent = steps[currentStep];
 
-  const onNext = (data: any) => {
-    // Merge data into form state
-    methods.setValue(Object.keys(data)[0], Object.values(data)[0]);
+  const onNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      handleSubmit((finalData) => {
-        console.log("Final data:", finalData); // Optional: vẫn có thể log
-        router.push("/app");
-      })();
+      handleSubmit(onSubmit)();
+    }
+  };
+
+  const onSubmit = async (data: any) => {
+    setIsLoading(true);
+    try {
+      const dateOfBirth = `${data.birthYear}-${data.birthMonth.padStart(2, "0")}-${data.birthDay.padStart(2, "0")}`;
+      const payload = {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        dateOfBirth: dateOfBirth,
+        gender: data.gender,
+        photos: data.photos,
+        location: data.location || { lat: 0, lon: 0 },
+      };
+      const res = await register(payload);
+      const { token, ...user } = res;
+      router.push("/app");
+    } catch (err: any) {
+      methods.setError("root", {
+        message: err.response?.data?.message || "Lỗi server",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -95,17 +124,22 @@ const RegistrationForm = () => {
 
         {/* Step Form */}
         <form
-          onSubmit={handleSubmit(onNext)}
+          onSubmit={(e) => {
+            e.preventDefault();
+            onNext();
+          }}
           className="flex flex-col gap-10 items-center w-full"
         >
           <StepComponent control={control} />
 
-          <Button
-            size="sm"
-            type="submit"
-            className="bg-[#FD5169] py-5 px-6 hover:transition cursor-pointer hover:bg-rose-500 rounded-4xl w-36"
-          >
-            {currentStep === steps.length - 1 ? "Finish" : "Continue"}
+          <Button type="button" onClick={onNext} disabled={isLoading}>
+            {isLoading ? (
+              <Spinner size="sm" />
+            ) : currentStep === steps.length - 1 ? (
+              "Finish"
+            ) : (
+              "Continue"
+            )}
           </Button>
         </form>
       </div>

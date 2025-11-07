@@ -1,75 +1,131 @@
 "use client";
 
-import {
-  Ruler,
-  Dumbbell,
-  GraduationCap,
-  Wine,
-  Cigarette,
-  Baby,
-  Search,
-  Star,
-  Building,
-  HandHeart,
-  MapPin,
-  Flag,
-  Venus,
-} from "lucide-react";
 import { BasicInfoItem } from "./BasicInfoItem";
-import UpdateProfileCategory from "..";
 import { Form } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { JSX, useState } from "react";
+import { useState, useEffect } from "react";
 import { DialogForm } from "@/components/common/Dialog";
-import { Button } from "@/components/ui/button";
-import SelectForm from "@/components/forms/SelectForm";
 import { SelectCardList } from "./SelectCardList";
 import { HeightSelector } from "./HeightSelector";
 import { fieldConfigs } from "@/app/edit-profile/configs";
+import UpdateProfileCategory from "..";
+import { updateUser } from "@/services/user/user.api";
+import { BasicProfileType } from "@/app/edit-profile/types";
+import {
+  Drinking,
+  EducationLevel,
+  Exercise,
+  Gender,
+  Kids,
+  LookingFor,
+  Politics,
+  Religion,
+  Smoking,
+  StarSign,
+} from "@/app/edit-profile/enums";
 
-// Giả sử options cho từng field
-const options = {
-  height: ["150 cm", "155 cm", "160 cm", "165 cm", "170 cm"],
-  exercise: ["Never", "Sometimes", "Often", "Everyday"],
-  educationLevel: ["High school", "Bachelor", "Master", "PhD"],
-  drinking: ["Never", "Socially", "Often"],
-  smoking: ["Never", "Sometimes", "Often"],
-  lookingFor: ["Friendship", "Relationship", "Marriage"],
-  kids: ["No kids", "Have kids"],
-  starSign: ["Leo", "Virgo", "Libra", "Scorpio", "Sagittarius"],
-  politics: ["Moderate", "Conservative", "Liberal"],
-  religion: ["None", "Buddhism", "Christianity", "Islam"],
-  gender: ["Male", "Female", "Other"],
-  placesLived: ["Hanoi", "Ho Chi Minh", "Da Nang"],
-  whereFrom: ["Hue", "Da Nang", "Can Tho"],
+// Import enums
+
+// Map enum → options cho SelectCardList
+const enumToOptions = <T extends Record<string, string>>(enumObj: T) =>
+  Object.values(enumObj).map((value) => ({
+    label: value,
+    value,
+  }));
+
+const optionsMap = {
+  exercise: enumToOptions(Exercise),
+  educationLevel: enumToOptions(EducationLevel),
+  drinking: enumToOptions(Drinking),
+  smoking: enumToOptions(Smoking),
+  lookingFor: enumToOptions(LookingFor),
+  kids: enumToOptions(Kids),
+  starSign: enumToOptions(StarSign),
+  politics: enumToOptions(Politics),
+  religion: enumToOptions(Religion),
+  gender: enumToOptions(Gender),
+  // placesLived & whereFrom: giả sử là string tự do → dùng input sau
+  placesLived: [],
+  whereFrom: [],
 };
 
-export function ProfileBasics() {
-  const form = useForm<BasicProfileData>({
+interface ProfileBasicsProps {
+  basic?: BasicProfileType;
+}
+
+export function ProfileBasics({ basic = {} }: ProfileBasicsProps) {
+  const [isActive, setIsActive] = useState(false);
+
+  const form = useForm<BasicProfileType>({
     defaultValues: {
-      height: "155",
-      exercise: "Sometimes",
-      educationLevel: "High school",
-      drinking: "Socially",
-      smoking: "Never",
-      lookingFor: "Marriage",
-      kids: "No kids",
-      starSign: "Leo",
-      politics: "Moderate",
-      religion: "Buddhism",
-      gender: "Female",
-      placesLived: "Hanoi",
-      whereFrom: "Da Nang",
+      height: basic.height,
+      exercise: basic.exercise ?? undefined,
+      educationLevel: basic.educationLevel ?? undefined,
+      drinking: basic.drinking ?? undefined,
+      smoking: basic.smoking ?? undefined,
+      lookingFor: basic.lookingFor ?? undefined,
+      kids: basic.kids ?? undefined,
+      starSign: basic.starSign ?? undefined,
+      politics: basic.politics ?? undefined,
+      religion: basic.religion ?? undefined,
+      gender: basic.gender || "",
+      placesLived: basic.placesLived || "",
+      whereFrom: basic.whereFrom || "",
     },
   });
 
-  const { control, getValues, handleSubmit } = form;
-  const data = getValues();
-  const [isActive, setIsActive] = useState(false);
+  const { control, watch, reset } = form;
+  const data = watch();
 
-  const onSubmit = (data: BasicProfileData) => {
-    console.log("Saved:", data);
-  };
+  // Reset khi basic từ server thay đổi
+  useEffect(() => {
+    reset({
+      height: basic.height,
+      exercise: basic.exercise ?? undefined,
+      educationLevel: basic.educationLevel ?? undefined,
+      drinking: basic.drinking ?? undefined,
+      smoking: basic.smoking ?? undefined,
+      lookingFor: basic.lookingFor ?? undefined,
+      kids: basic.kids ?? undefined,
+      starSign: basic.starSign ?? undefined,
+      politics: basic.politics ?? undefined,
+      religion: basic.religion ?? undefined,
+      gender: basic.gender ?? undefined,
+      placesLived: basic.placesLived ?? undefined,
+      whereFrom: basic.whereFrom ?? undefined,
+    });
+  }, [basic, reset]);
+
+  // Lưu tự động khi có thay đổi
+  useEffect(() => {
+    const hasChanged =
+      JSON.stringify(data) !==
+      JSON.stringify({
+        height: basic.height?.toString() || "",
+        exercise: basic.exercise || "",
+        educationLevel: basic.educationLevel || "",
+        drinking: basic.drinking || "",
+        smoking: basic.smoking || "",
+        lookingFor: basic.lookingFor || "",
+        kids: basic.kids || "",
+        starSign: basic.starSign || "",
+        politics: basic.politics || "",
+        religion: basic.religion || "",
+        gender: basic.gender || "",
+        placesLived: basic.placesLived || "",
+        whereFrom: basic.whereFrom || "",
+      });
+
+    if (!hasChanged) return;
+
+    const timeout = setTimeout(() => {
+      const payload: Partial<BasicProfileType> = { ...data };
+      if (payload.height) payload.height = Number(payload.height);
+      updateUser({ basic: payload }).catch(console.error);
+    }, 600);
+
+    return () => clearTimeout(timeout);
+  }, [data, basic]);
 
   return (
     <UpdateProfileCategory
@@ -79,46 +135,62 @@ export function ProfileBasics() {
     >
       <Form {...form}>
         <div className="space-y-3">
-          {fieldConfigs.map((item) => (
-            <DialogForm
-              key={item.key}
-              dialogTrigger={
-                <div>
-                  <BasicInfoItem
-                    icon={item.icon}
-                    label={item.label}
-                    value={data[item.key]}
-                  />
-                </div>
-              }
-              dialogBody={
-                <div className="flex flex-col gap-4 mt-2 w-full">
-                  {item.key === "height" ? (
-                    <HeightSelector
-                      control={control}
-                      name="height"
-                      // onSkip={onClose}
+          {fieldConfigs.map((item) => {
+            const fieldKey = item.key as keyof BasicProfileType;
+            const value = data[fieldKey] as BasicProfileType;
+
+            return (
+              <DialogForm
+                key={item.key}
+                dialogTrigger={
+                  <div>
+                    <BasicInfoItem
+                      icon={item.icon}
+                      label={item.label}
+                      value={value || "Not set"}
                     />
-                  ) : (
-                    <div className="w-full">
-                      <div className="w-full mb-4 flex flex-col items-center justify-center gap-2 text-lg font-medium">
-                        <item.icon className="text-rose-500 w-10 h-10" />
-                        {item.question}
+                  </div>
+                }
+                dialogBody={
+                  <div className="flex flex-col gap-4 mt-2 w-full">
+                    {item.key === "height" ? (
+                      <HeightSelector control={control} name="height" />
+                    ) : item.key === "placesLived" ||
+                      item.key === "whereFrom" ? (
+                      <div className="w-full">
+                        <div className="w-full mb-4 flex flex-col items-center justify-center gap-2 text-lg font-medium">
+                          <item.icon className="text-rose-500 w-10 h-10" />
+                          {item.question}
+                        </div>
+                        {/* Dùng input tự do cho nơi sống / quê quán */}
+                        <input
+                          type="text"
+                          className="w-full p-3 border rounded-xl text-center"
+                          placeholder="Enter your answer"
+                          {...form.register(fieldKey)}
+                        />
                       </div>
-                      <SelectCardList
-                        control={control}
-                        name={item.key}
-                        options={(options[item.key] || []).map((opt) => ({
-                          label: opt,
-                          value: opt,
-                        }))}
-                      />
-                    </div>
-                  )}
-                </div>
-              }
-            />
-          ))}
+                    ) : (
+                      <div className="w-full">
+                        <div className="w-full mb-4 flex flex-col items-center justify-center gap-2 text-lg font-medium">
+                          <item.icon className="text-rose-500 w-10 h-10" />
+                          {item.question}
+                        </div>
+                        <SelectCardList
+                          control={control}
+                          name={item.key}
+                          options={
+                            optionsMap[item.key as keyof typeof optionsMap] ||
+                            []
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                }
+              />
+            );
+          })}
         </div>
       </Form>
     </UpdateProfileCategory>

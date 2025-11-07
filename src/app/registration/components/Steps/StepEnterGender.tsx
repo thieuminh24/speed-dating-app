@@ -14,9 +14,9 @@ const StepEnterGender = ({ control }: StepEnterGenderProps) => {
         control={control}
         questionLabel="What’s your gender?"
         options={[
-          { label: "Man", value: "man" },
-          { label: "Woman", value: "woman" },
-          { label: "Nonbinary", value: "nonbinary" },
+          { label: "Male", value: "Male" },
+          { label: "Female", value: "Female" },
+          { label: "Non-binary", value: "Non-binary" },
         ]}
         className="w-96"
         itemClassName="h-16"

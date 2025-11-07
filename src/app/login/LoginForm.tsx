@@ -1,17 +1,22 @@
+// app/login/page.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Lottie from "lottie-react";
 import LoadingAnimation from "../../../public/animations/Loading-1.json";
+import LoadingMain from "../../../public/animations/Loading-3.json";
 import { Quicksand } from "next/font/google";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
 import Image from "next/image";
-import LoadingMain from "../../../public/animations/Loading-3.json";
 import { Separator } from "@/components/ui/separator";
+import { login } from "@/services/auth/auth.api";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/store/auth.store";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -29,99 +34,181 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
+    setError,
   } = useForm<LoginForm>();
+  const [isLoading, setIsLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const { login: loginStore } = useAuth();
 
-  const onSubmit = (data: LoginForm) => {
-    console.log("Login data:", data);
-    // TODO: call your API
+  // Auto focus email
+  useEffect(() => {
+    emailRef.current?.focus();
+  }, []);
+
+  const onSubmit = async (data: LoginForm) => {
+    setIsLoading(true);
+    try {
+      const res = await login(data);
+      const { token, ...user } = res;
+      loginStore(token, user); // ← Zustand lưu + persist
+      router.push("/app");
+    } catch (err: any) {
+      const message =
+        err.response?.data?.message || "Email hoặc mật khẩu không đúng";
+      setError("root", { message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
+      {/* Logo */}
       <Image
         src="/image/Couplix.png"
         alt="Couplix Logo"
         width={300}
         height={300}
         priority
-        style={{ position: "absolute", top: -86, left: 20 }}
+        className="absolute top-[-86px] left-5 w-32 md:w-48"
       />
-      <Card className="relative z-10 w-4/12 p-6 bg-white/80 backdrop-blur-md rounded-2xl shadow-neutral-200">
-        <CardHeader>
+
+      {/* Card */}
+      <Card className="relative z-10 w-full max-w-md p-6 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg">
+        <CardHeader className="space-y-4">
           <Lottie
             animationData={LoadingMain}
             loop={true}
-            style={{ width: "100px", height: "100px", margin: "0 auto" }}
+            style={{ width: 80, height: 80, margin: "0 auto" }}
           />
-          <CardTitle
-            className="text-3xl text-center font-bold mb-4"
+          <p
+            className="text-3xl text-center font-bold"
             style={{ fontFamily: "var(--font-quicksand)" }}
           >
             Welcome to Couplix
-          </CardTitle>
+          </p>
         </CardHeader>
 
-        <CardContent className="space-y-10">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mb-0.5">
-            <Input
-              type="email"
-              placeholder="Email"
-              style={{
-                fontFamily: "var(--font-quicksand)",
-                height: "45px",
-                fontSize: "16px",
-                borderRadius: "18px",
-                paddingLeft: "20px",
-              }}
-              {...register("email", { required: "Email is required" })}
-            />
-            {errors.email && (
-              <p className="text-red-500 text-sm">{errors.email.message}</p>
+        <CardContent className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Email */}
+            <div>
+              <Input
+                ref={emailRef}
+                type="email"
+                placeholder="Email"
+                aria-label="Email"
+                className="h-12 text-base rounded-2xl pl-5"
+                style={{ fontFamily: "var(--font-quicksand)" }}
+                {...register("email", {
+                  required: "Vui lòng nhập email",
+                  pattern: {
+                    value: /^\S+@\S+$/i,
+                    message: "Email không hợp lệ",
+                  },
+                })}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div>
+              <Input
+                type="password"
+                placeholder="Mật khẩu"
+                aria-label="Mật khẩu"
+                className="h-12 text-base rounded-2xl pl-5"
+                style={{ fontFamily: "var(--font-quicksand)" }}
+                {...register("password", {
+                  required: "Vui lòng nhập mật khẩu",
+                  minLength: {
+                    value: 6,
+                    message: "Mật khẩu phải có ít nhất 6 ký tự",
+                  },
+                })}
+              />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            {/* Server Error */}
+            {errors.root && (
+              <p className="text-red-500 text-sm text-center animate-pulse">
+                {errors.root.message}
+              </p>
             )}
 
-            <Input
-              type="password"
-              placeholder="Password"
-              style={{
-                fontFamily: "var(--font-quicksand)",
-                height: "45px",
-                fontSize: "16px",
-                borderRadius: "18px",
-                paddingLeft: "20px",
-              }}
-              {...register("password", { required: "Password is required" })}
-            />
-            {errors.password && (
-              <p className="text-red-500 text-sm">{errors.password.message}</p>
-            )}
-
+            {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full bg-zinc-700 hover:bg-zinc-800 text-white h-10 border-none rounded-3xl cursor-pointer "
+              disabled={isLoading}
+              className="w-full bg-zinc-700 hover:bg-zinc-800 text-white h-12 rounded-3xl transition-all"
             >
-              Log In
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Lottie
+                    animationData={LoadingAnimation}
+                    style={{ width: 24, height: 24 }}
+                  />
+                  Đang đăng nhập...
+                </div>
+              ) : (
+                "Đăng nhập"
+              )}
             </Button>
-            <div className="flex items-center w-full">
+
+            <div className="flex items-center">
               <Separator className="flex-1" />
-              <span className="mx-2 text-sm text-muted-foreground">or</span>
+              <span className="mx-3 text-sm text-muted-foreground">hoặc</span>
               <Separator className="flex-1" />
             </div>
           </form>
 
-          <div className="flex items-center justify-center space-x-4 mt-4 mb-4">
+          {/* Social Login */}
+          <div className="flex gap-3">
             <Button
               variant="outline"
-              className="flex-1 flex items-center justify-center gap-2 cursor-pointer"
-              size={"lg"}
+              className="flex-1 flex items-center justify-center gap-2"
+              size="lg"
+              type="button"
             >
               <FcGoogle size={20} /> Google
             </Button>
             <Button
               variant="outline"
-              className="flex-1 flex items-center justify-center gap-2 text-blue-600 border-blue-400 cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-2 text-blue-600"
+              size="lg"
+              type="button"
             >
               <FaFacebookF size={20} /> Facebook
             </Button>
+          </div>
+
+          {/* Links */}
+          <div className="text-center space-y-2 text-sm">
+            <a
+              href="/forgot-password"
+              className="block text-blue-600 hover:underline"
+            >
+              Quên mật khẩu?
+            </a>
+            <p>
+              Chưa có tài khoản?{" "}
+              <a
+                href="/register"
+                className="text-blue-600 font-medium hover:underline"
+              >
+                Đăng ký ngay
+              </a>
+            </p>
           </div>
         </CardContent>
       </Card>

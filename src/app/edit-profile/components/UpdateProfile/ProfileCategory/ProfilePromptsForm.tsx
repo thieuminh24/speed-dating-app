@@ -3,7 +3,6 @@
 import { Form, FormItem } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Plus, PenLine } from "lucide-react";
-import UpdateProfileCategory from ".";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import TextareaForm from "@/components/forms/TextareaForm";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import UpdateProfileCategory from ".";
 
 type Prompt = { title: string; answer: string };
 type FormData = { prompts: Prompt[] };
@@ -126,7 +126,7 @@ export function ProfilePromptsForm() {
             <div className="w-full flex items-center justify-center">
               <div className="flex flex-col gap-3 bg-white rounded-xl ">
                 <Select onValueChange={handleSelectPrompt}>
-                  <SelectTrigger className="w-[280px]">
+                  <SelectTrigger className="w-[280px] mb-1">
                     <Plus className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Add a prompt" />
                   </SelectTrigger>
