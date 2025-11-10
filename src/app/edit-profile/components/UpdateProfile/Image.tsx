@@ -32,7 +32,7 @@ const UpdateImage: React.FC<UpdateImageProps> = ({
   useEffect(() => {
     const persist = async () => {
       try {
-        await updateUser({ photos: images });
+        if (images.length > 0) await updateUser({ photos: images });
       } catch (err) {
         console.error("Failed to update photos:", err);
       }

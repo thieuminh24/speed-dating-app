@@ -22,8 +22,8 @@ export const createUser = async (user: {
 };
 
 // Swipe
-export const getSwipeUsers = async (currentUserId: string) => {
-  const { data } = await userService.get(`/users/${currentUserId}/swipe/list`);
+export const getRecommendationPartner = async () => {
+  const { data } = await userService.get(`/matching/recommendations`);
   return data;
 };
 

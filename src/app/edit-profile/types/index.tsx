@@ -1,3 +1,4 @@
+import { PromptsType } from "@/types/user.types";
 import {
   Drinking,
   EducationLevel,
@@ -31,11 +32,6 @@ export type LocationType = {
   lon: number;
 };
 
-export type PromptsType = {
-  prompt: string;
-  answer: string;
-};
-
 export type JobsType = {
   title: string;
   company: string;
@@ -55,7 +51,7 @@ export type UpdateUserType = {
     jobs?: JobsType[];
     education?: EducationType[];
   };
-  basic?: BasicProfileData;
+  basic?: BasicProfileType;
   location?: LocationType;
 };
 
@@ -71,6 +67,6 @@ export type Profile = {
   photos?: string[];
   prompts?: PromptsType[];
   jobsAndEducation: jobsAndEducationType;
-  basic: BasicProfileData;
+  basic: BasicProfileType;
   location?: LocationType;
 };

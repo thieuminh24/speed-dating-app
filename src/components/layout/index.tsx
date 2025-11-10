@@ -50,19 +50,8 @@ export default function Layout({
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col items-center ">
-        <div className="flex mb-4 w-full flex-col items-center">
-          <div className="w-[300px] h-[80px] overflow-hidden relative">
-            <Image
-              src="/image/CouplixMixLogo.png"
-              alt="Couplix Logo"
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-        </div>
-        <Card className="w-11/12 shadow-none h-10/12 border-0 rounded-4xl flex flex-col justify-center py-0 ">
+      <main className="flex-1 flex flex-col items-center h-[100vh]">
+        <Card className="w-full shadow-none h-10/12 border-0 rounded-4xl flex flex-col justify-center py-0 ">
           <CardContent className="flex flex-col items-center w-full h-full px-0 ">
             {mainChildren}
           </CardContent>

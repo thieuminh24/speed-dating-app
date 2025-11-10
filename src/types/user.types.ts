@@ -1,14 +1,18 @@
 // types/user.ts
+
+export type PromptsType = {
+  prompt: string;
+  answer: string;
+};
 export type User = {
   _id: string;
+  name?: string;
+  age?: string;
   photos: string[];
-  prompts: {
-    vibe: string;
-    trend: string;
-    lowKey: string;
-  };
+  aboutMe?: string;
+  prompts: PromptsType[];
   about: string;
-  basics: {
+  basic: {
     height: string | null;
     exercise: string | null;
     education: string | null;
@@ -20,6 +24,7 @@ export type User = {
     politics: string | null;
     religion: string | null;
     gender: string | null;
+    placesLived: string | null;
   };
   places: {
     live: string;
@@ -28,5 +33,6 @@ export type User = {
   likedUsers: string[];
   dislikedUsers: string[];
   matches: string[];
+  location: { lat: number; lon: number };
   __v: number;
 };
