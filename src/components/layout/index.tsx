@@ -1,3 +1,5 @@
+//component/layout/index.tsx
+
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +11,7 @@ import "swiper/css/effect-creative";
 
 import { ChevronLeft } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/store/auth.store";
 
 export default function Layout({
   asideChildren,
@@ -19,6 +22,7 @@ export default function Layout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const showBackIcon = pathname !== "/app"; // Nếu không phải /app thì show icon
   console.log("Rendering Layout component", router);
@@ -37,7 +41,7 @@ export default function Layout({
             <div></div>
           )}
           <img
-            src="https://i.pravatar.cc/100?img=3"
+            src={user?.avatar}
             alt="avatar"
             className="w-14 h-14 rounded-full mb-2 cursor-pointer"
             onClick={() => router.push("/edit-profile")}
@@ -51,7 +55,7 @@ export default function Layout({
       </aside>
 
       <main className="flex-1 flex flex-col items-center h-[100vh]">
-        <Card className="w-full shadow-none h-10/12 border-0 rounded-4xl flex flex-col justify-center py-0 ">
+        <Card className="w-full shadow-none h-11/12 border-0 rounded-4xl flex flex-col justify-center py-0 ">
           <CardContent className="flex flex-col items-center w-full h-full px-0 ">
             {mainChildren}
           </CardContent>

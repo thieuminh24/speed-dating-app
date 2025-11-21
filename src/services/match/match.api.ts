@@ -1,5 +1,4 @@
-// services/userService/users.t
-
+// services/match/match.api.ts (Updated)
 import userService from "../config";
 
 export const getAllUsers = async () => {
@@ -21,26 +20,41 @@ export const createUser = async (user: {
   return data;
 };
 
-// Swipe
+// ===== MATCHING ENDPOINTS =====
+
+// Get recommendations
 export const getRecommendationPartner = async () => {
   const { data } = await userService.get(`/matching/recommendations`);
   return data;
 };
 
+// Like a user
+export const likeUser = async (targetUserId: string) => {
+  const { data } = await userService.post(`/matching/like`, { targetUserId });
+  return data;
+};
+
+// Pass a user
+export const passUser = async (targetUserId: string) => {
+  const { data } = await userService.post(`/matching/pass`, { targetUserId });
+  return data;
+};
+
+// Get all matches
+export const getMatches = async () => {
+  const { data } = await userService.get(`/matching/matches`);
+  return data;
+};
+
+// Legacy function - deprecated
 export const swipeUser = async (
   currentUserId: string,
   targetUserId: string,
   like: boolean,
 ) => {
-  const { data } = await userService.post(
-    `/users/${currentUserId}/swipe/${targetUserId}`,
-    { like },
-  );
-  return data;
-};
-
-// Matches
-export const getMatches = async (currentUserId: string) => {
-  const { data } = await userService.get(`/users/${currentUserId}/matches`);
-  return data;
+  if (like) {
+    return likeUser(targetUserId);
+  } else {
+    return passUser(targetUserId);
+  }
 };

@@ -1,3 +1,5 @@
+//services/user/user.api.ts
+
 import { UpdateUserType } from "@/app/edit-profile/types";
 import userService from "../config";
 

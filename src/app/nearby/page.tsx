@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserLocation } from "@/hook/useUserLocation";
-import NearbyMap from "./components/NearbyMap";
+import NearbyMap from "../app/components/NearbyMap";
 
 export default function NearbyPage() {
   const { location, error } = useUserLocation();

@@ -56,17 +56,19 @@ export type UpdateUserType = {
 };
 
 export type jobsAndEducationType = {
-  jobs?: JobsType[];
-  education?: EducationType[];
+  jobs: JobsType[];
+  education: EducationType[];
 };
 
 export type Profile = {
+  id: string;
   name: string;
-  aboutMe?: string;
-  dateOfBirth?: Date;
-  photos?: string[];
-  prompts?: PromptsType[];
+  age: number;
+  aboutMe: string;
+  dateOfBirth: Date;
+  photos: string[];
+  prompts: PromptsType[];
   jobsAndEducation: jobsAndEducationType;
   basic: BasicProfileType;
-  location?: LocationType;
+  location: LocationType;
 };

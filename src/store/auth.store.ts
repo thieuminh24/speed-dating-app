@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type User = {
+type UserAuthData = {
   _id: string;
   name: string;
   email: string;
@@ -12,11 +12,11 @@ export type User = {
 
 type AuthState = {
   token: string | null;
-  user: User | null;
+  user: UserAuthData | null;
   isAuthenticated: boolean;
   isHydrated: boolean; // ← RÕ RÀNG HƠN isReady
 
-  login: (token: string, user: User) => void;
+  login: (token: string, user: UserAuthData) => void;
   logout: () => void;
   hydrate: () => void; // ← Gọi 1 lần duy nhất
 };

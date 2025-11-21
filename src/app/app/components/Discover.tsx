@@ -1,22 +1,24 @@
+// src/app/app/page.tsx (Updated)
+"use client";
+
 import React, { useState, useEffect } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FaRegHeart } from "react-icons/fa";
 import { IoMdClose } from "react-icons/io";
-import { EffectCards } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
-import CardInfo, { User } from "./CardInfo";
 import { LuRuler } from "react-icons/lu";
-import { TbGlass, TbZodiacAquarius } from "react-icons/tb";
+import "swiper/css/effect-creative";
 import {
   getRecommendationPartner,
-  swipeUser,
+  likeUser,
+  passUser,
 } from "@/services/match/match.api";
 import {
   Baby,
+  Check,
   Church,
   Cigarette,
   Dumbbell,
@@ -32,9 +34,14 @@ import {
 import Image from "next/image";
 import { useUserLocation } from "@/hook/useUserLocation";
 import { Button } from "@/components/ui/button";
-import NearbyMap from "@/app/nearby/components/NearbyMap";
+import { EffectCreative } from "swiper/modules";
+import { Profile } from "@/app/edit-profile/types";
+import NearbyMap from "./NearbyMap";
+import MatchModal from "./MatchModal";
+import CardInfo from "./CardInfo";
+import { StoryFeed } from "./story/StoryFeed";
 
-export const mapApiUserToUser = (apiUser: any): User => {
+export const mapApiUserToUser = (apiUser: any): Profile => {
   const basic = apiUser.basic || {};
 
   const badge = [
@@ -43,12 +50,7 @@ export const mapApiUserToUser = (apiUser: any): User => {
       : []),
     ...(basic.exercise ? [{ data: basic.exercise, icon: <Dumbbell /> }] : []),
     ...(basic.educationLevel
-      ? [
-          {
-            data: basic.educationLevel,
-            icon: <GraduationCap />,
-          },
-        ]
+      ? [{ data: basic.educationLevel, icon: <GraduationCap /> }]
       : []),
     ...(basic.drinking ? [{ data: basic.drinking, icon: <GlassWater /> }] : []),
     ...(basic.smoking ? [{ data: basic.smoking, icon: <Cigarette /> }] : []),
@@ -64,18 +66,26 @@ export const mapApiUserToUser = (apiUser: any): User => {
 
   return {
     ...apiUser,
+    id: apiUser._id,
     age: apiUser.age,
     badge,
   };
 };
 
 const Discover = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
   const [swiperRef, setSwiperRef] = useState<any>(null);
   const [viewMode, setViewMode] = useState<"card" | "map">("card");
   const { location } = useUserLocation();
 
-  // GỌI API CHỈ 1 LẦN → DÙNG CHUNG
+  // Match modal state
+  const [matchData, setMatchData] = useState<{
+    matchId: string;
+    matchedUser: { _id: string; name: string; photos: string[] };
+  } | null>(null);
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -89,28 +99,43 @@ const Discover = () => {
     fetchUsers();
   }, []);
 
-  // XỬ LÝ LIKE/PASS → CẬP NHẬT CHUNG CHO CẢ 2 VIEW
-  // const handleSwipe = async (userId: string, isLike: boolean) => {
-  //   try {
-  //     await swipeUser(userId, isLike);
-  //     setUsers((prev) => prev.filter((u) => u.id !== userId));
-  //   } catch (error) {
-  //     console.error("Swipe failed:", error);
-  //   }
-  // };
+  // Handle swipe
+  const handleSwipe = async (userId: string, isLike: boolean) => {
+    try {
+      let response;
+      if (isLike) {
+        response = await likeUser(userId);
+      } else {
+        response = await passUser(userId);
+      }
+
+      // Check if it's a match
+      if (response.matchId) {
+        setMatchData({
+          matchId: response.matchId,
+          matchedUser: response.matchedUser,
+        });
+        setIsMatchModalOpen(true);
+      }
+
+      // Remove user from list
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+
+      // Move to next card
+      if (swiperRef) {
+        swiperRef.slideNext();
+      }
+    } catch (error) {
+      console.error("Swipe failed:", error);
+    }
+  };
 
   return (
     <div className="relative w-full h-full flex flex-col">
       {/* HEADER */}
       <div className="flex flex-col items-center mb-4">
         <div className="w-[300px] h-[80px] overflow-hidden relative">
-          <Image
-            src="/image/CouplixMixLogo.png"
-            alt="Couplix Logo"
-            fill
-            className="object-contain"
-            priority
-          />
+          <StoryFeed />
         </div>
 
         {/* TAB SWITCH */}
@@ -140,11 +165,15 @@ const Discover = () => {
       {viewMode === "card" && (
         <>
           <Swiper
-            effect="cards"
-            grabCursor={true}
-            modules={[EffectCards]}
             onSwiper={setSwiperRef}
-            className="mySwiper w-full max-w-[1307px] h-[70vh]"
+            grabCursor={true}
+            effect={"creative"}
+            creativeEffect={{
+              prev: { shadow: true, translate: [0, 0, -400] },
+              next: { translate: ["100%", 0, 0] },
+            }}
+            modules={[EffectCreative]}
+            className="mySwiper w-full max-w-[1307px] h-full rounded-4xl"
           >
             {users.map((user) => (
               <SwiperSlide
@@ -157,17 +186,17 @@ const Discover = () => {
           </Swiper>
 
           {/* ACTION BUTTONS */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-6 z-10">
+          <div className="absolute bottom-[-50] left-1/2 transform -translate-x-1/2 flex gap-6 z-10">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
                   onClick={() => {
-                    const currentUser = users[swiperRef?.activeIndex];
-                    // if (currentUser) handleSwipe(currentUser.id, false);
+                    const currentUser = users[swiperRef?.activeIndex || 0];
+                    if (currentUser) handleSwipe(currentUser.id, false);
                   }}
-                  className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center border-2 border-gray-300 cursor-pointer hover:scale-110 transition"
+                  className="w-28 h-28 rounded-full bg-white shadow-xl flex items-center justify-center border-1 border-gray-300 cursor-pointer hover:scale-110 transition"
                 >
-                  <IoMdClose size={32} className="text-gray-500" />
+                  <IoMdClose size={50} className="text-gray-500" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -177,8 +206,8 @@ const Discover = () => {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center border-2 border-amber-400 cursor-pointer hover:scale-110 transition">
-                  <div className="relative w-12 h-12">
+                <div className="w-28 h-28 rounded-full bg-white shadow-xl flex items-center justify-center border-2 border-amber-400 cursor-pointer hover:scale-110 transition">
+                  <div className="relative w-24 h-24">
                     <div
                       className="absolute inset-0 rounded-full"
                       style={{
@@ -190,7 +219,7 @@ const Discover = () => {
                       }}
                     />
                     <Star
-                      size={28}
+                      size={50}
                       fill="white"
                       className="absolute inset-0 m-auto"
                     />
@@ -206,12 +235,12 @@ const Discover = () => {
               <TooltipTrigger asChild>
                 <div
                   onClick={() => {
-                    const currentUser = users[swiperRef?.activeIndex];
-                    // if (currentUser) handleSwipe(currentUser.id, true);
+                    const currentUser = users[swiperRef?.activeIndex || 0];
+                    if (currentUser) handleSwipe(currentUser.id, true);
                   }}
-                  className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center border-2 border-rose-400 cursor-pointer hover:scale-110 transition"
+                  className="w-28 h-28 rounded-full bg-white shadow-xl flex items-center justify-center border-1 cursor-pointer hover:scale-110 transition"
                 >
-                  <FaRegHeart size={32} className="text-rose-500" />
+                  <Check size={50} className="text-rose-500" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -222,15 +251,11 @@ const Discover = () => {
         </>
       )}
 
-      {/* MAP VIEW – DÙNG CHUNG `users` */}
+      {/* MAP VIEW */}
       {viewMode === "map" && (
-        <div className="w-full h-[80vh] rounded-3xl overflow-hidden shadow-2xl">
+        <div className="w-[95%] h-[80vh] mx-7 rounded-3xl overflow-hidden shadow-2xl">
           {location ? (
-            <NearbyMap
-              userLocation={location}
-              users={users} // TRUYỀN DATA CHUNG
-              // onSwipe={handleSwipe} // DÙNG CHUNG HÀM
-            />
+            <NearbyMap userLocation={location} users={users} />
           ) : (
             <div className="flex items-center justify-center h-full bg-gray-100">
               <p className="text-gray-600">Đang lấy vị trí...</p>
@@ -238,6 +263,13 @@ const Discover = () => {
           )}
         </div>
       )}
+
+      {/* MATCH MODAL */}
+      <MatchModal
+        isOpen={isMatchModalOpen}
+        onClose={() => setIsMatchModalOpen(false)}
+        matchData={matchData}
+      />
     </div>
   );
 };

@@ -1,8 +1,8 @@
 "use client";
 
-import { Form, FormItem } from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Plus, PenLine } from "lucide-react";
+import { PenLine, Plus } from "lucide-react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import TextareaForm from "@/components/forms/TextareaForm";
 import { useEffect, useRef, useState } from "react";
@@ -14,119 +14,157 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import UpdateProfileCategory from ".";
+import { updateUser } from "@/services/user/user.api";
 
-type Prompt = { title: string; answer: string };
+type Prompt = { prompt: string; answer: string };
 type FormData = { prompts: Prompt[] };
 
-export function ProfilePromptsForm() {
+const allOptions = [
+  {
+    value: "I'll know we vibe on a date if",
+    label: "I'll know we vibe on a date if",
+  },
+  {
+    value: "If I could bring back one trend, it would be",
+    label: "If I could bring back one trend, it would be",
+  },
+  { value: "Low-key, I think I", label: "Low-key, I think I" },
+  {
+    value: "The most spontaneous thing I've done",
+    label: "The most spontaneous thing I've done",
+  },
+  { value: "My biggest irrational fear", label: "My biggest irrational fear" },
+] as const;
+
+interface ProfilePromptsFormProps {
+  prompts: Prompt[]; // existing prompts from the server / parent
+}
+
+export function ProfilePromptsForm({ prompts = [] }: ProfilePromptsFormProps) {
+  const [isActive, setIsActive] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
-  const [isActive, setIsActive] = useState<boolean>(false);
-  const [selected, setSelected] = useState("");
 
   const form = useForm<FormData>({
     defaultValues: {
-      prompts: [],
+      prompts,
     },
   });
 
-  const { control } = form;
-  const prompts = useWatch({ control, name: "prompts" });
+  const { control, handleSubmit, reset, setValue } = form;
 
-  const allOptions = [
-    {
-      value: "I'll know we vibe on a date if",
-      label: "I'll know we vibe on a date if",
-    },
-    {
-      value: "If I could bring back one trend, it would be",
-      label: "If I could bring back one trend, it would be",
-    },
-    { value: "Low-key, I think I", label: "Low-key, I think I" },
-    {
-      value: "The most spontaneous thing I've done",
-      label: "The most spontaneous thing I've done",
-    },
-    {
-      value: "My biggest irrational fear",
-      label: "My biggest irrational fear",
-    },
-  ];
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "prompts",
+  });
 
-  const usedTitles = prompts.map((p) => p.title);
+  useEffect(() => {
+    if (prompts && prompts.length > 0) {
+      reset({ prompts });
+    }
+  }, [prompts, reset]);
+  // Watch the current prompts so we can compute available options
+  const currentPrompts = useWatch({ control, name: "prompts" }) ?? [];
+  console.log("currentPrompts", currentPrompts);
+
+  const usedTitles = currentPrompts.map((p) => p.prompt);
   const availableOptions = allOptions.filter(
     (opt) => !usedTitles.includes(opt.value),
   );
 
-  const { append } = useFieldArray({
-    control: control,
-    name: "prompts",
-  });
-
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Click-outside to stop editing
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (e: MouseEvent) => {
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        !containerRef.current.contains(e.target as Node)
       ) {
         setEditingIndex(-1);
       }
-    }
-
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleSelectPrompt = (value: string) => {
-    setSelected(value);
-    append({ title: value, answer: "" });
+    append({ prompt: value, answer: "" });
+    // optionally auto-focus the new textarea
+    setEditingIndex(currentPrompts.length); // length before append → correct index after
+  };
+
+  const onFormSubmit = async (data: FormData) => {
+    await updateUser(data);
+    // you could also save to an API here
   };
 
   return (
     <UpdateProfileCategory
-      title={"My Profile Prompts"}
+      title="My Profile Prompts"
       isActive={isActive}
-      onClick={() => setIsActive(!isActive)}
+      onClick={() => setIsActive((v) => !v)}
     >
       <div ref={containerRef}>
         <Form {...form}>
-          {prompts.map((prompt, index) => (
-            <FormItem
-              key={index}
-              className="border rounded-xl px-3 mb-3 bg-white mt-4"
-            >
-              <div className="flex items-center justify-between mt-2">
-                <h3 className="font-medium text-rose-400 text-[12px]">
-                  {prompt.title}
-                </h3>
+          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+            {fields.map((field, index) => (
+              <div
+                key={field.id} // important: use field.id from useFieldArray
+                className="border rounded-xl bg-white p-4 mt-4"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-rose-400 text-sm font-medium">
+                    {currentPrompts[index]?.prompt}
+                  </h3>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-500 "
-                  onClick={() => setEditingIndex(index)}
-                >
-                  {editingIndex !== index && <PenLine size={16} className="" />}
-                </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingIndex(index)}
+                    >
+                      <PenLine className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => {
+                        remove(index);
+                        if (editingIndex === index) setEditingIndex(-1);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+
+                {editingIndex === index ? (
+                  <TextareaForm
+                    control={control}
+                    name={`prompts.${index}.answer`}
+                    placeholder="Your answer..."
+                    className="border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none resize-none"
+                    maxlength={160}
+                  />
+                ) : (
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {currentPrompts[index]?.answer || (
+                      <span className="text-gray-400">No answer yet</span>
+                    )}
+                  </p>
+                )}
               </div>
-              {editingIndex === index ? (
-                <TextareaForm
-                  control={control}
-                  name={`prompts.${index}.answer`}
-                  className="border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none max-w-[374px]"
-                  maxlength={160}
-                />
-              ) : (
-                <div className="px-4 pb-4">{prompt.answer}</div>
-              )}
-            </FormItem>
-          ))}
-          {availableOptions.length !== 0 && (
-            <div className="w-full flex items-center justify-center">
-              <div className="flex flex-col gap-3 bg-white rounded-xl ">
+            ))}
+
+            {/* Add new prompt */}
+            {availableOptions.length > 0 && (
+              <div className="flex justify-center mt-6">
                 <Select onValueChange={handleSelectPrompt}>
-                  <SelectTrigger className="w-[280px] mb-1">
+                  <SelectTrigger className="w-[280px]">
                     <Plus className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Add a prompt" />
                   </SelectTrigger>
@@ -140,8 +178,15 @@ export function ProfilePromptsForm() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Optional save button */}
+            {fields.length > 0 && (
+              <div className="flex justify-end mt-6">
+                <Button type="submit">Save Prompts</Button>
+              </div>
+            )}
+          </form>
         </Form>
       </div>
     </UpdateProfileCategory>

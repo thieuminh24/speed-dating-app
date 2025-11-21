@@ -9,14 +9,16 @@ import WorkAndEducationForm from "./ProfileCategory/WorkAndEducationForm";
 import { ProfileBasics } from "./ProfileCategory/MyBasic/Index";
 import { getProfile } from "@/services/user/user.api";
 import { Profile } from "../../types";
+import PreviewProfile from "./ProfileCategory/PreviewProfile";
+import { mapApiUserToUser } from "@/app/app/components/Discover";
 
 const UpdateProfile = () => {
   const [profile, setProfile] = useState<Profile>();
 
   const fetchProfile = async () => {
     const res = await getProfile();
-    console.log("fetchProfile", res);
-    setProfile(res);
+    const mappedUser = mapApiUserToUser(res);
+    setProfile(mappedUser);
   };
 
   useEffect(() => {
@@ -28,11 +30,8 @@ const UpdateProfile = () => {
   return (
     <div>
       <UpdateImage photos={profile?.photos}></UpdateImage>
-      <div className="rounded-4xl border-1 py-2 px-4 mt-6 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition">
-        <p>Preview Profile</p>
-        <ChevronRight />
-      </div>
-      <ProfilePromptsForm prompts={profile?.prompts} />
+      <PreviewProfile profile={profile || null} />
+      <ProfilePromptsForm prompts={profile?.prompts || []} />
       <AboutMeForm aboutMe={profile?.aboutMe || ""} />
       <WorkAndEducationForm jobsAndEducation={profile?.jobsAndEducation} />
       <ProfileBasics basic={profile?.basic} />

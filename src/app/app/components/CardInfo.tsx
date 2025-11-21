@@ -4,56 +4,74 @@ import React, { ReactNode } from "react";
 import { FaMarsStrokeUp } from "react-icons/fa6";
 import { ImQuotesLeft } from "react-icons/im";
 import { Mousewheel } from "swiper/modules";
+import "swiper/css/pagination";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/mousewheel";
-import { User } from "@/types/user.types";
+
+// import required modules
+import { Pagination } from "swiper/modules";
+import { Profile } from "@/app/edit-profile/types";
 
 export type UserBadge = {
   data: string;
   icon: ReactNode;
 };
 
-const CardInfo = ({ data }: { data: User }) => {
-  console.log("data", data);
+const CardInfo = ({ data }: { data: Profile }) => {
   return (
     <Swiper
-      direction="vertical"
-      slidesPerView={1}
-      spaceBetween={30}
-      mousewheel={{ releaseOnEdges: true }}
-      nested={true}
-      modules={[Mousewheel]}
-      className="h-full w-full rounded-4xl"
+      direction={"vertical"}
+      pagination={{
+        clickable: true,
+      }}
+      modules={[Pagination]}
+      className="h-full w-full "
     >
-      <SwiperSlide>
-        <div className="h-full w-full flex items-center justify-center text-3xl">
+      {/* ==== Slide 1: Ảnh + Tên, tuổi, verified ==== */}
+      <SwiperSlide className="!overflow-hidden">
+        <div className="flex h-full w-full">
+          {/* Ảnh */}
           <div
-            className="bg-cover bg-center w-1/2 h-full"
-            style={{ backgroundImage: `url(${data.photos[0]})` }}
-          ></div>
-          <div className="bg-rose-200 h-full flex items-start justify-center text-3xl w-1/2 px-10 flex-col gap-2">
+            className="w-1/2 bg-cover bg-center"
+            style={{ backgroundImage: `url(${data?.photos[0]})` }}
+          />
+          {/* Thông tin */}
+          <div className="flex w-1/2 flex-col justify-center gap-4 bg-rose-200 p-8">
             <FaMarsStrokeUp size={40} />
-            <div className="flex items-center gap-4">
-              <h2 className="text-4xl font-bold">{`${data.name}, ${data.age}`}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-4xl font-bold">{`${data.name}, ${data?.age}`}</h2>
               <Badge
                 variant="secondary"
                 className="bg-blue-500 text-white dark:bg-blue-600"
               >
-                <BadgeCheckIcon />
+                <BadgeCheckIcon className="mr-1 h-4 w-4" />
                 Photo Verified
               </Badge>
+            </div>
+            <div>
+              <p className="font-medium">
+                {data?.jobsAndEducation?.jobs[0].title} at{" "}
+                {data?.jobsAndEducation?.jobs[0].company}
+              </p>
+              <p className="font-medium">
+                {" "}
+                {data?.jobsAndEducation?.education[0].institution},{" "}
+                {data?.jobsAndEducation?.education[0].graduation}
+              </p>
             </div>
           </div>
         </div>
       </SwiperSlide>
-      <SwiperSlide>
-        <div className="bg-rose-200 h-full flex items-center justify-center text-3xl">
-          <div className="flex flex-col items-center gap-2 px-10">
+
+      {/* ==== Slide 2: About + Badges ==== */}
+      <SwiperSlide className="!overflow-hidden">
+        <div className="flex h-full items-center justify-center bg-rose-200 p-10">
+          <div className="flex flex-col items-center gap-3 text-center">
             <ImQuotesLeft size={22} />
-            <p className="text-[20px] font-extrabold">{`About ${data.name} `}</p>
-            <p className="text-[12px]">{data.aboutMe}</p>
-            <div className="flex gap-2 mt-2.5">
+            <p className="text-sm font-medium">About {data.name}</p>
+            <p className="text-[16px] font-mono font-medium">{data.aboutMe}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
               {data.badge.map((badge, idx) => (
                 <Badge key={idx} className="bg-rose-300 text-gray-950">
                   {badge.icon} {badge.data}
@@ -63,51 +81,49 @@ const CardInfo = ({ data }: { data: User }) => {
           </div>
         </div>
       </SwiperSlide>
-      {/* DYNAMIC SLIDES: Prompt + Ảnh */}
-      {data.prompts.map((prompt, idx) => (
-        <SwiperSlide key={`prompt-${idx}`}>
-          <div className="h-full w-full flex">
-            {/* Ảnh thứ (idx + 1) */}
+
+      {/* ==== Dynamic Prompt Slides ==== */}
+      {data?.prompts?.map((prompt, idx) => (
+        <SwiperSlide key={`prompt-${idx}`} className="!overflow-hidden">
+          <div className="flex h-full w-full">
+            {/* Ảnh (nếu có) */}
             {data.photos[idx + 1] ? (
               <div
-                className="bg-cover bg-center w-1/2 h-full"
+                className="w-1/2 bg-cover bg-center"
                 style={{ backgroundImage: `url(${data.photos[idx + 1]})` }}
               />
-            ) : (
-              <></>
-            )}
+            ) : null}
 
             {/* Prompt */}
             <div
-              className={`bg-rose-200 h-full ${data.photos[idx + 1] ? "w-1/2" : "w-full"}  flex items-center justify-center p-8`}
+              className={`flex h-full items-center justify-center bg-rose-200 p-8 ${
+                data.photos[idx + 1] ? "w-1/2" : "w-full"
+              }`}
             >
-              <div className="flex flex-col items-center gap-4 text-center max-w-xs">
+              <div className="flex max-w-xs flex-col items-center gap-4 text-center">
                 <ImQuotesLeft size={28} />
                 <p className="text-lg font-semibold">{prompt.prompt}</p>
-                <p className="text-sm italic text-gray-700">
-                  "{prompt.answer}"
-                </p>
+                <p className="italic text-gray-700">"{prompt.answer}"</p>
               </div>
             </div>
           </div>
         </SwiperSlide>
       ))}
-      {/* EXTRA: Ảnh + placesLived (nếu còn ảnh) */}
-      {data.photos.slice(data.prompts.length + 1).map((photo, idx) => (
-        <SwiperSlide key={`extra-${idx}`}>
-          <div className="h-full w-full flex">
+
+      {/* ==== Extra Photos + Places Lived ==== */}
+      {data?.photos?.slice(data?.prompts?.length + 1).map((photo, idx) => (
+        <SwiperSlide key={`extra-${idx}`} className="!overflow-hidden">
+          <div className="flex h-full w-full">
             <div
-              className="bg-cover bg-center w-1/2 h-full"
+              className="w-1/2 bg-cover bg-center"
               style={{ backgroundImage: `url(${photo})` }}
             />
-            <div className="bg-rose-200 h-full w-1/2 flex items-center justify-center p-8">
-              <div className="flex flex-col items-center gap-2 text-center">
-                <MapPin className="w-8 h-8" />
-                <p className="text-lg font-medium">Places I've lived</p>
-                <p className="text-sm text-gray-700">
-                  {data.basic?.placesLived || "Not set"}
-                </p>
-              </div>
+            <div className="flex w-1/2 flex-col items-center justify-center gap-2 bg-rose-200 p-8 text-center">
+              <MapPin className="h-8 w-8" />
+              <p className="text-lg font-medium">Places I've lived</p>
+              <p className="text-sm text-gray-700">
+                {data.basic?.placesLived || "Not set"}
+              </p>
             </div>
           </div>
         </SwiperSlide>

@@ -10,11 +10,13 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart, X } from "lucide-react";
 import CardInfo from "@/app/app/components/CardInfo";
-import { User } from "@/types/user.types";
+import { UserDetailModal } from "@/app/app/components/UserDetailModal";
+import ActionSwiper from "@/app/app/components/ActionSwiper";
+import { Profile } from "@/app/edit-profile/types";
 
 interface NearbyMapProps {
   userLocation: { lat: number; lon: number };
-  users: User[];
+  users: Profile[];
   onSwipe?: (userId: string, isLike: boolean) => Promise<void>;
 }
 
@@ -23,7 +25,7 @@ const NearbyMap: React.FC<NearbyMapProps> = ({
   users,
   onSwipe,
 }) => {
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [isCardOpen, setIsCardOpen] = useState(false);
 
   const MapEvents = () => {
@@ -65,7 +67,7 @@ const NearbyMap: React.FC<NearbyMapProps> = ({
 
           return (
             <Marker
-              key={user._id}
+              key={user.id}
               position={[user.location.lat, user.location.lon]}
               icon={icon}
               eventHandlers={{
@@ -79,31 +81,27 @@ const NearbyMap: React.FC<NearbyMapProps> = ({
           );
         })}
       </MapContainer>
-
       {/* CARD MODAL */}
       <Dialog open={isCardOpen} onOpenChange={setIsCardOpen}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-3xl">
+        <DialogContent
+          className="
+      w-full 
+      max-w-lg 
+      sm:max-w-xl 
+      md:max-w-3xl 
+      lg:max-w-6xl 
+      h-[85vh] 
+      p-0 
+      overflow-hidden 
+      rounded-3xl
+    "
+          style={{ zIndex: 1000 }}
+        >
           {selectedUser && (
-            <div className="relative">
+            <>
               <CardInfo data={selectedUser} />
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-6 z-10">
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="w-16 h-16 rounded-full shadow-xl"
-                  onClick={() => onSwipe(selectedUser._id, false)}
-                >
-                  <X className="w-8 h-8" />
-                </Button>
-                <Button
-                  size="icon"
-                  className="w-16 h-16 rounded-full bg-rose-500 hover:bg-rose-600 shadow-xl"
-                  onClick={() => onSwipe(selectedUser._id, true)}
-                >
-                  <Heart className="w-8 h-8" />
-                </Button>
-              </div>
-            </div>
+              <ActionSwiper bottom="30px" />
+            </>
           )}
         </DialogContent>
       </Dialog>
