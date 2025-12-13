@@ -1,4 +1,5 @@
-// src/app/chat/components/MessageBubble.tsx (Fixed)
+// src/app/chat/components/MessageBubble.tsx - MESSENGER STYLE
+
 "use client";
 
 import { Message } from "@/store/chat.store";
@@ -9,6 +10,7 @@ import { useState } from "react";
 
 interface MessageBubbleProps {
   message: Message;
+  showAvatar?: boolean;
   onReact: (emoji: string) => void;
   onDelete: () => void;
 }
@@ -17,6 +19,7 @@ const EMOJIS = ["❤️", "😂", "👍", "😮", "😢", "🔥"];
 
 export default function MessageBubble({
   message,
+  showAvatar = true,
   onReact,
   onDelete,
 }: MessageBubbleProps) {
@@ -25,50 +28,64 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`flex gap-2 mb-4 ${message.isMine ? "justify-end" : "justify-start"}`}
+      className={`flex gap-2 ${message.isMine ? "justify-end" : "justify-start"} ${showAvatar ? "mt-3" : "mt-0.5"}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => {
         setShowActions(false);
         setShowReactions(false);
       }}
     >
-      {/* Avatar (for other user) */}
-      {!message.isMine && (
-        <Avatar className="w-8 h-8">
+      {/* Avatar (left side for partner, only show if showAvatar) */}
+      {!message.isMine && showAvatar && (
+        <Avatar className="w-7 h-7 flex-shrink-0">
           <AvatarImage
             src={message.sender.photos[0]}
             alt={message.sender.name}
           />
-          <AvatarFallback>{message.sender.name.charAt(0)}</AvatarFallback>
+          <AvatarFallback className="text-xs">
+            {message.sender.name.charAt(0)}
+          </AvatarFallback>
         </Avatar>
       )}
 
+      {/* Spacer when no avatar */}
+      {!message.isMine && !showAvatar && <div className="w-7 flex-shrink-0" />}
+
+      {/* Message content */}
       <div
-        className={`flex flex-col ${message.isMine ? "items-end" : "items-start"}`}
+        className={`flex flex-col ${message.isMine ? "items-end" : "items-start"} max-w-[70%]`}
       >
+        {/* Sender name (only for partner messages with avatar) */}
+        {!message.isMine && showAvatar && (
+          <span className="text-xs text-gray-500 mb-1 px-3">
+            {message.sender.name}
+          </span>
+        )}
+
         {/* Message bubble */}
         <div
           className={`
-            relative max-w-xs lg:max-w-md px-4 py-2 rounded-2xl
+            relative px-3 py-2 rounded-2xl break-words
             ${
               message.isMine
-                ? "bg-rose-500 text-white rounded-br-none"
-                : "bg-gray-100 text-gray-900 rounded-bl-none"
+                ? "bg-rose-500 text-white"
+                : "bg-gray-200 text-gray-900"
             }
+            ${!showAvatar ? "mt-0.5" : ""}
           `}
         >
           {/* Text message */}
           {message.type === "text" && (
-            <p className="text-sm break-words">{message.content}</p>
+            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
           )}
 
           {/* Image message */}
           {message.type === "image" && message.fileUrl && (
-            <div className="relative w-64 h-64 rounded-lg overflow-hidden">
+            <div className="relative max-w-xs rounded-lg overflow-hidden">
               <img
                 src={message.fileUrl}
                 alt="Shared image"
-                className="w-full h-full object-cover"
+                className="w-full h-auto object-cover"
               />
             </div>
           )}
@@ -86,12 +103,15 @@ export default function MessageBubble({
           )}
 
           {/* Quiz Invite message */}
-          {message.type === "quiz_invite" && (message as any).quizSessionId && (
-            <div className="space-y-2">
-              <p className="text-sm">{message.content}</p>
+          {message.type === "quiz_invite" && message.quizSessionId && (
+            <div className="space-y-2 min-w-[200px]">
+              <p className="text-sm font-medium">{message.content}</p>
               <a
-                href={`/quiz/${(message as any).quizSessionId}`}
-                className="inline-block mt-2 px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover:bg-purple-50 transition"
+                href={`/quiz/${message.quizSessionId}`}
+                className={`
+                  inline-block w-full text-center px-4 py-2 rounded-lg font-semibold transition
+                  ${message.isMine ? "bg-white text-rose-500 hover:bg-rose-50" : "bg-rose-500 text-white hover:bg-rose-600"}
+                `}
               >
                 🧠 Take Quiz
               </a>
@@ -100,39 +120,36 @@ export default function MessageBubble({
 
           {/* Reactions */}
           {message.reactions && message.reactions.length > 0 && (
-            <div className="absolute -bottom-2 right-2 flex gap-1">
-              {message.reactions.map((reaction, idx) => (
+            <div className="absolute -bottom-2 left-2 flex gap-0.5 bg-white rounded-full px-2 py-0.5 shadow-md border">
+              {message.reactions.slice(0, 3).map((reaction, idx) => (
                 <span
                   key={`${reaction.userId}-${idx}`}
-                  className="bg-white rounded-full px-2 py-0.5 text-xs shadow-md border"
+                  className="text-xs"
                   title={reaction.userName}
                 >
                   {reaction.emoji}
                 </span>
               ))}
+              {message.reactions.length > 3 && (
+                <span className="text-xs text-gray-500">
+                  +{message.reactions.length - 3}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {/* Timestamp, read status & actions */}
-        <div className="flex items-center gap-2 mt-1 px-2">
-          <span className="text-xs text-gray-500">
-            {formatDistanceToNow(new Date(message.createdAt), {
-              addSuffix: true,
-            })}
-          </span>
-
-          {/* Read status for sent messages */}
-          {message.isMine && message.readStatus && (
+        {/* Timestamp and actions */}
+        {showActions && (
+          <div className="flex items-center gap-2 mt-1 px-2">
             <span className="text-xs text-gray-500">
-              {message.readStatus === "read" && "✓✓"}
-              {message.readStatus === "delivered" && "✓"}
-              {message.readStatus === "sent" && "✓"}
+              {formatDistanceToNow(new Date(message.createdAt), {
+                addSuffix: true,
+              })}
             </span>
-          )}
 
-          {showActions && (
-            <div className="flex gap-1 relative">
+            {/* Actions */}
+            <div className="flex gap-1">
               {/* React button */}
               <div className="relative">
                 <button
@@ -142,7 +159,7 @@ export default function MessageBubble({
                   <Smile size={14} className="text-gray-500" />
                 </button>
 
-                {/* Emoji picker popup */}
+                {/* Emoji picker */}
                 {showReactions && (
                   <div className="absolute bottom-full mb-2 left-0 bg-white rounded-lg shadow-lg border p-2 flex gap-2 z-50">
                     {EMOJIS.map((emoji) => (
@@ -171,17 +188,9 @@ export default function MessageBubble({
                 </button>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-
-      {/* Avatar (for current user) */}
-      {message.isMine && (
-        <Avatar className="w-8 h-8">
-          <AvatarImage src={message.sender.photos[0]} alt="You" />
-          <AvatarFallback>You</AvatarFallback>
-        </Avatar>
-      )}
     </div>
   );
 }

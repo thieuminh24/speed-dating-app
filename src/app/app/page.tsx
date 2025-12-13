@@ -37,6 +37,7 @@ export default function BumblePage() {
     setIsLoading(true);
     try {
       const data = await getConversations();
+      console.log("Loaded conversations:", data);
       setConversations(data);
     } catch (error) {
       console.error("Failed to load conversations:", error);

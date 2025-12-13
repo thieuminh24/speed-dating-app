@@ -23,6 +23,7 @@ import {
   Smoking,
   StarSign,
 } from "@/app/edit-profile/enums";
+import { vietnamProvinces } from "@/services/location/vietnam-provinces";
 
 // Import enums
 
@@ -45,8 +46,8 @@ const optionsMap = {
   religion: enumToOptions(Religion),
   gender: enumToOptions(Gender),
   // placesLived & whereFrom: giả sử là string tự do → dùng input sau
-  placesLived: [],
-  whereFrom: [],
+  placesLived: vietnamProvinces.map((p) => ({ label: p.name, value: p.name })),
+  whereFrom: vietnamProvinces.map((p) => ({ label: p.name, value: p.name })),
 };
 
 interface ProfileBasicsProps {
@@ -153,23 +154,23 @@ export function ProfileBasics({ basic = {} }: ProfileBasicsProps) {
                 }
                 dialogBody={
                   <div className="flex flex-col gap-4 mt-2 w-full">
-                    {item.key === "height" ? (
-                      <HeightSelector control={control} name="height" />
-                    ) : item.key === "placesLived" ||
-                      item.key === "whereFrom" ? (
+                    {item.key === "placesLived" || item.key === "whereFrom" ? (
                       <div className="w-full">
                         <div className="w-full mb-4 flex flex-col items-center justify-center gap-2 text-lg font-medium">
                           <item.icon className="text-rose-500 w-10 h-10" />
                           {item.question}
                         </div>
-                        {/* Dùng input tự do cho nơi sống / quê quán */}
-                        <input
-                          type="text"
-                          className="w-full p-3 border rounded-xl text-center"
-                          placeholder="Enter your answer"
-                          {...form.register(fieldKey)}
+                        <SelectCardList
+                          control={control}
+                          name={item.key}
+                          options={
+                            optionsMap[item.key as keyof typeof optionsMap] ||
+                            []
+                          }
                         />
                       </div>
+                    ) : item.key === "height" ? (
+                      <HeightSelector control={control} name="height" />
                     ) : (
                       <div className="w-full">
                         <div className="w-full mb-4 flex flex-col items-center justify-center gap-2 text-lg font-medium">

@@ -89,11 +89,6 @@ export default function MatchModal({
             You and {matchData.matchedUser.name} liked each other
           </motion.p>
 
-          <QuizInviteButton
-            matchId={matchData.matchId}
-            partnerName={matchData.matchedUser.name}
-          />
-
           {/* User avatar */}
           <motion.div
             initial={{ scale: 0 }}

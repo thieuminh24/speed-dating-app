@@ -266,7 +266,7 @@ export default function QuizResultPage() {
 
           <Button
             variant="outline"
-            onClick={() => router.push("/matches")}
+            onClick={() => router.push("/app")}
             className="px-8 py-6 text-lg"
           >
             Back to Matches

@@ -10,7 +10,7 @@ import { IoMdClose } from "react-icons/io";
 const ActionSwiper = ({ bottom }: { bottom: string }) => {
   return (
     <div
-      className={`absolute bottom-[30px] left-1/2 transform -translate-x-1/2 flex gap-6 z-10`}
+      className={`absolute bottom-[30px] left-1/2 transform -translate-x-1/2 flex gap-6 z-3000`}
     >
       <Tooltip>
         <TooltipTrigger asChild>

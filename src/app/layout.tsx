@@ -1,7 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist_Mono, Quicksand } from "next/font/google";
-import "leaflet/dist/leaflet.css";
+import "leaflet/dist/leaflet.css"; // hoặc "./globals.css" nếu bạn không cần import ở đây
 import "./globals.css";
+import GoogleOAuthProvider from "@/providers/GoogleOAuthProvider";
 
 const quicksand = Quicksand({
   variable: "--font-quicksand",
@@ -15,22 +17,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Speed Dating App 💘",
-  description: "Find your perfect match with style ✨",
+  title: "Speed Dating App",
+  description: "Find your perfect match with style",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  // const { isReady } = useAuthInit();
-
-  // if (!isReady) return <Loading />;
+}) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      {/* Bắt buộc để tránh lỗi extension */}
       <head>
-        {/* Google Fonts for Story */}
+        {/* Google Fonts cho Story */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -44,8 +44,9 @@ export default function RootLayout({
       </head>
       <body
         className={`${quicksand.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning // Thêm dòng này để triệt tiêu warning do ColorZilla, WhatFont,...
       >
-        {children}
+        <GoogleOAuthProvider>{children}</GoogleOAuthProvider>
       </body>
     </html>
   );

@@ -34,6 +34,10 @@ export function StoryViewer({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  console.log("StoryViewer:", viewers);
+
+  console.log("StoryViewer stories:", stories);
+
   const currentStory = stories[currentIndex];
   const duration =
     currentStory.type === StoryType.VIDEO
@@ -118,7 +122,7 @@ export function StoryViewer({
 
   const getUserInfo = () => {
     if (typeof currentStory.userId === "string") {
-      return { name: "Unknown", avatar: "" };
+      return { name: user?.name, avatar: user?.photos?.[0] || "" };
     }
     return {
       name: currentStory.userId.name,
@@ -176,7 +180,7 @@ export function StoryViewer({
             <>
               <button
                 onClick={handleShowViewers}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white flex"
               >
                 <Eye className="w-5 h-5" />
                 <span className="text-xs ml-1">{currentStory.viewCount}</span>

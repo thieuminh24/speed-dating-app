@@ -71,4 +71,5 @@ export type Profile = {
   jobsAndEducation: jobsAndEducationType;
   basic: BasicProfileType;
   location: LocationType;
+  isPhotoVerified: boolean;
 };

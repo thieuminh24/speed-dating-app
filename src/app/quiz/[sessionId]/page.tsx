@@ -10,8 +10,15 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  Heart,
+  Loader2,
+  ArrowRight,
+  ArrowLeft,
+  AlertCircle,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Question {
   _id: string;
@@ -31,6 +38,7 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSession();
@@ -38,37 +46,88 @@ export default function QuizPage() {
 
   const loadSession = async () => {
     try {
+      setError(null);
       console.log("Loading quiz session:", sessionId);
+
       const data = await getQuizSession(sessionId);
       console.log("Quiz data received:", data);
 
       setSession(data);
 
-      // Fix: Check if questions exist
-      if (data.questions && Array.isArray(data.questions)) {
-        console.log("Questions loaded:", data.questions.length);
-        setQuestions(data.questions);
-      } else {
-        console.error("No questions found in session:", data);
+      // Check if already submitted
+      if (data.hasSubmitted) {
+        console.log("User already submitted");
+        if (data.status === "completed") {
+          router.push(`/quiz/${sessionId}/result`);
+        } else {
+          router.push(`/quiz/${sessionId}/waiting`);
+        }
+        return;
       }
+
+      // Check if quiz is not in progress
+      if (data.status === "pending") {
+        setError(
+          "This quiz hasn't been accepted yet. Waiting for the other user to accept.",
+        );
+        return;
+      }
+
+      if (data.status !== "in_progress") {
+        setError(`Quiz is not available (status: ${data.status})`);
+        return;
+      }
+
+      // Validate questions
+      if (!data.questions || !Array.isArray(data.questions)) {
+        console.error("No questions found in session:", data);
+        setError("No questions found in this quiz session");
+        return;
+      }
+
+      if (data.questions.length === 0) {
+        console.error("Questions array is empty");
+        setError("This quiz has no questions");
+        return;
+      }
+
+      // Validate question structure
+      const invalidQuestions = data.questions.filter(
+        (q: any) =>
+          !q._id || !q.question || !q.options || q.options.length === 0,
+      );
+
+      if (invalidQuestions.length > 0) {
+        console.error("Invalid questions found:", invalidQuestions);
+        setError("Some questions are missing required data");
+        return;
+      }
+
+      console.log("Questions loaded:", data.questions.length);
+      setQuestions(data.questions);
     } catch (error: any) {
       console.error("Failed to load quiz:", error);
       console.error("Error details:", error.response?.data);
-      alert(
-        "Failed to load quiz: " +
-          (error.response?.data?.message || error.message),
-      );
+
+      const errorMessage =
+        error.response?.data?.message || error.message || "Failed to load quiz";
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAnswer = (questionId: string, value: string) => {
+    console.log(`Question ${questionId} answered: ${value}`);
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const progress =
+    questions.length > 0
+      ? ((currentQuestionIndex + 1) / questions.length) * 100
+      : 0;
   const isAnswered = currentQuestion && answers[currentQuestion._id];
   const allAnswered = questions.every((q) => answers[q._id]);
 
@@ -85,22 +144,47 @@ export default function QuizPage() {
   };
 
   const handleSubmit = async () => {
+    if (!allAnswered) {
+      alert("Please answer all questions before submitting");
+      return;
+    }
+
     setSubmitting(true);
+    setError(null);
+
     try {
+      console.log("Submitting answers...");
+      console.log("Session ID:", sessionId);
+      console.log("Answers:", answers);
+
       const formattedAnswers = questions.map((q) => ({
         questionId: q._id,
         selectedOption: answers[q._id],
       }));
 
+      console.log("Formatted answers:", formattedAnswers);
+
       const result = await submitQuizAnswers(sessionId, formattedAnswers);
+      console.log("Submit result:", result);
 
       if (result.status === "completed") {
+        console.log("Quiz completed, navigating to result...");
         router.push(`/quiz/${sessionId}/result`);
       } else {
+        console.log("Waiting for other user...");
         router.push(`/quiz/${sessionId}/waiting`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to submit:", error);
+      console.error("Error response:", error.response?.data);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to submit answers";
+
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -108,8 +192,36 @@ export default function QuizPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+        <p className="text-gray-600">Loading quiz...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen px-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-6">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={loadSession}
+                className="flex-1"
+              >
+                Try Again
+              </Button>
+              <Button onClick={() => router.push("/app")} className="flex-1">
+                Back to Matches
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -117,7 +229,13 @@ export default function QuizPage() {
   if (!session || questions.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p>Quiz not found</p>
+        <Card className="max-w-md w-full">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 mb-4">Quiz not available</p>
+            <Button onClick={() => router.push("/app")}>Back to Matches</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -129,15 +247,15 @@ export default function QuizPage() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-4">
             <Avatar className="w-16 h-16 border-4 border-white shadow-lg">
-              <AvatarImage src={session.initiator.photos[0]} />
-              <AvatarFallback>{session.initiator.name[0]}</AvatarFallback>
+              <AvatarImage src={session.initiator?.photos?.[0]} />
+              <AvatarFallback>{session.initiator?.name?.[0]}</AvatarFallback>
             </Avatar>
 
             <Heart className="text-rose-500 fill-rose-500" size={32} />
 
             <Avatar className="w-16 h-16 border-4 border-white shadow-lg">
-              <AvatarImage src={session.participant.photos[0]} />
-              <AvatarFallback>{session.participant.name[0]}</AvatarFallback>
+              <AvatarImage src={session.participant?.photos?.[0]} />
+              <AvatarFallback>{session.participant?.name?.[0]}</AvatarFallback>
             </Avatar>
           </div>
 
@@ -188,7 +306,7 @@ export default function QuizPage() {
                   }
                   className="space-y-4"
                 >
-                  {currentQuestion?.options?.map((option) => (
+                  {currentQuestion.options?.map((option) => (
                     <motion.div
                       key={option.value}
                       whileHover={{ scale: 1.02 }}
@@ -275,8 +393,14 @@ export default function QuizPage() {
                       : "bg-gray-300"
                 }
               `}
+              aria-label={`Go to question ${idx + 1}`}
             />
           ))}
+        </div>
+
+        {/* Progress Info */}
+        <div className="text-center mt-6 text-sm text-gray-600">
+          {Object.keys(answers).length} of {questions.length} questions answered
         </div>
       </div>
     </div>

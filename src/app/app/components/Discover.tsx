@@ -40,9 +40,13 @@ import NearbyMap from "./NearbyMap";
 import MatchModal from "./MatchModal";
 import CardInfo from "./CardInfo";
 import { StoryFeed } from "./story/StoryFeed";
+import FilterBar from "./FilterBar";
+import { MatchFilters } from "../types/filter.types";
 
 export const mapApiUserToUser = (apiUser: any): Profile => {
   const basic = apiUser.basic || {};
+
+  console.log("Mapping API user to Profile:", apiUser);
 
   const badge = [
     ...(basic.height
@@ -78,6 +82,8 @@ const Discover = () => {
   const [viewMode, setViewMode] = useState<"card" | "map">("card");
   const { location } = useUserLocation();
 
+  console.log("Users:", users);
+
   // Match modal state
   const [matchData, setMatchData] = useState<{
     matchId: string;
@@ -85,20 +91,34 @@ const Discover = () => {
   } | null>(null);
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
 
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const apiUsers = await getRecommendationPartner();
-        const mappedUsers = apiUsers.map(mapApiUserToUser);
-        setUsers(mappedUsers);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-    fetchUsers();
-  }, []);
+  // State cho filter
+  const [filters, setFilters] = useState<MatchFilters>({
+    minAge: 18,
+    maxAge: 100,
+    gender: "All",
+  });
 
+  // Fetch users với filter
+  const fetchUsers = async () => {
+    try {
+      const apiFilters: any = {};
+
+      if (filters.minAge > 18) apiFilters.minAge = filters.minAge;
+      if (filters.maxAge < 100) apiFilters.maxAge = filters.maxAge;
+      if (filters.gender !== "All") apiFilters.gender = filters.gender;
+
+      const apiUsers = await getRecommendationPartner(apiFilters);
+      const mappedUsers = apiUsers.map(mapApiUserToUser);
+      setUsers(mappedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  // Gọi lần đầu và mỗi khi filter thay đổi
+  useEffect(() => {
+    fetchUsers();
+  }, [filters]); // Quan trọng: re-fetch khi filter đổi
   // Handle swipe
   const handleSwipe = async (userId: string, isLike: boolean) => {
     try {
@@ -159,6 +179,8 @@ const Discover = () => {
             Map
           </Button>
         </div>
+
+        <FilterBar filters={filters} onChange={setFilters} />
       </div>
 
       {/* CARD VIEW */}
@@ -178,7 +200,7 @@ const Discover = () => {
             {users.map((user) => (
               <SwiperSlide
                 key={user.id}
-                className="flex items-center justify-center bg-gradient-to-br from-pink-100 to-rose-100 rounded-3xl overflow-hidden shadow-2xl"
+                className="flex items-center justify-center bg-gradient-to-br from-pink-100 to-rose-100 rounded-3xl overflow-hidden shadow-2xl w-full"
               >
                 <CardInfo data={user} />
               </SwiperSlide>

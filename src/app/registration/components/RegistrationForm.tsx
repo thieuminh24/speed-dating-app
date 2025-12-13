@@ -3,21 +3,25 @@
 import Image from "next/image";
 import { Progress } from "@/components/ui/progress";
 import { IoIosArrowBack } from "react-icons/io";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { FcGoogle } from "react-icons/fc"; // ✅ THÊM
 
 import StepEnterName from "./Steps/StepEnterName";
 import StepEnterBirthday from "./Steps/StepEnterBirthday";
 import StepEnterGender from "./Steps/StepEnterGender";
 import StepUploadAvatar from "./Steps/StepUploadAvatar";
 import StepEnterLocation from "./Steps/StepEnterLocation";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import StepEnterEmailAndPassword from "./Steps/StepEnterEmailAndPassword";
 import { register } from "@/services/auth/auth.api";
-import { Spinner, type SpinnerProps } from "@/components/ui/shadcn-io/spinner";
+import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { useAuth } from "@/store/auth.store";
+import userService from "@/services/config";
 
-const steps = [
+// ✅ Bước registration khác nhau cho Google vs Local
+const stepsLocal = [
   StepEnterEmailAndPassword,
   StepEnterName,
   StepEnterBirthday,
@@ -26,7 +30,29 @@ const steps = [
   StepEnterLocation,
 ];
 
+const stepsGoogle = [
+  // Skip email/password for Google users
+  StepEnterBirthday,
+  StepEnterGender,
+  StepUploadAvatar,
+  StepEnterLocation,
+];
+
+interface GoogleRegistrationData {
+  googleId: string;
+  email: string;
+  name: string;
+  photo: string;
+}
+
 const RegistrationForm = () => {
+  const searchParams = useSearchParams();
+  const isFromGoogle = searchParams.get("from") === "google";
+
+  const [googleData, setGoogleData] = useState<GoogleRegistrationData | null>(
+    null,
+  );
+
   const methods = useForm({
     mode: "onSubmit",
     defaultValues: {
@@ -37,19 +63,38 @@ const RegistrationForm = () => {
       birthMonth: "",
       birthYear: "",
       gender: "",
-      photos: [],
+      photos: [] as string[],
       location: { lat: 0, lon: 0 },
     },
   });
 
-  const { handleSubmit, control, getValues, watch } = methods;
+  const { handleSubmit, control, setValue, watch } = methods;
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log("Form Values:", watch());
-
   const router = useRouter();
+  const { login: loginStore } = useAuth();
 
+  // ✅ Load Google data from sessionStorage
+  useEffect(() => {
+    if (isFromGoogle) {
+      const storedData = sessionStorage.getItem("googleRegistrationData");
+      if (storedData) {
+        const data: GoogleRegistrationData = JSON.parse(storedData);
+        setGoogleData(data);
+
+        // Prefill form
+        setValue("email", data.email);
+        setValue("name", data.name);
+        setValue("photos", [data.photo]);
+
+        console.log("✅ Prefilled Google data:", data);
+      }
+    }
+  }, [isFromGoogle, setValue]);
+
+  // Choose steps based on registration type
+  const steps = isFromGoogle ? stepsGoogle : stepsLocal;
   const StepComponent = steps[currentStep];
 
   const onNext = () => {
@@ -64,19 +109,62 @@ const RegistrationForm = () => {
     setIsLoading(true);
     try {
       const dateOfBirth = `${data.birthYear}-${data.birthMonth.padStart(2, "0")}-${data.birthDay.padStart(2, "0")}`;
-      const payload = {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        dateOfBirth: dateOfBirth,
-        gender: data.gender,
-        photos: data.photos,
-        location: data.location || { lat: 0, lon: 0 },
-      };
-      const res = await register(payload);
-      const { token, ...user } = res;
-      router.push("/app");
+
+      if (isFromGoogle && googleData) {
+        // ========================================
+        // GOOGLE REGISTRATION
+        // ========================================
+        console.log("🔐 Completing Google registration...");
+
+        const payload = {
+          googleId: googleData.googleId,
+          email: googleData.email,
+          name: data.name || googleData.name,
+          dateOfBirth,
+          gender: data.gender,
+          photos: data.photos.length > 0 ? data.photos : [googleData.photo],
+          location: data.location || { lat: 0, lon: 0 },
+          // ❌ REMOVED: authProvider - backend will set this automatically
+        };
+
+        console.log("📤 Sending payload:", payload);
+
+        // Call new endpoint: /auth/google/complete
+        const res = await userService.post("/auth/google/complete", payload);
+        const { token, ...user } = res.data;
+
+        console.log("✅ Registration complete:", user);
+
+        // Clear sessionStorage
+        sessionStorage.removeItem("googleRegistrationData");
+
+        // Login
+        loginStore(token, user);
+        router.push("/app");
+      } else {
+        // ========================================
+        // LOCAL REGISTRATION (existing flow)
+        // ========================================
+        console.log("📧 Local registration...");
+
+        const payload = {
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          dateOfBirth,
+          gender: data.gender,
+          photos: data.photos,
+          location: data.location || { lat: 0, lon: 0 },
+        };
+
+        const res = await register(payload);
+        const { token, ...user } = res;
+
+        loginStore(token, user);
+        router.push("/app");
+      }
     } catch (err: any) {
+      console.error("❌ Registration error:", err);
       methods.setError("root", {
         message: err.response?.data?.message || "Lỗi server",
       });
@@ -106,6 +194,16 @@ const RegistrationForm = () => {
             />
           </div>
         </div>
+
+        {/* Google Registration Badge */}
+        {isFromGoogle && googleData && (
+          <div className="mb-4 px-4 py-2 bg-blue-50 rounded-lg flex items-center gap-2">
+            <FcGoogle className="text-xl" />
+            <span className="text-sm text-gray-700">
+              Completing registration with Google ({googleData.email})
+            </span>
+          </div>
+        )}
 
         {/* Progress + Back */}
         <div className="flex items-center gap-4 w-full max-w-md mb-6">

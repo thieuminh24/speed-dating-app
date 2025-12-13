@@ -1,4 +1,5 @@
-// src/app/chat/components/ChatWindow.tsx (Fixed)
+// src/app/chat/components/ChatWindow.tsx - FIXED VERSION
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -41,6 +42,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     setMessages,
     addMessage,
     joinConversation,
+    leaveConversation,
     sendMessage,
     startTyping,
     stopTyping,
@@ -56,6 +58,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const conversationMessages = messages[conversation._id] || [];
   const isPartnerOnline = onlineUsers.has(conversation.partner._id);
@@ -68,24 +71,29 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
 
     // Mark as read when entering conversation
     handleMarkAsRead();
+
+    return () => {
+      leaveConversation(conversation._id);
+    };
   }, [conversation._id]);
 
-  // Auto scroll to bottom
+  // Auto scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
-  }, [conversationMessages]);
+  }, [conversationMessages.length]);
 
   const loadMessages = async () => {
     setIsLoading(true);
     try {
       const data = await getMessages(conversation._id);
-      // Ensure isMine is correctly set based on current user
+
+      // ===== FIX: Correctly set isMine based on current user =====
       const processedMessages = data.messages.map((msg: any) => ({
         ...msg,
-        isMine: msg.sender._id === user?._id,
-        // Ensure reactions array exists
+        isMine: msg.sender._id === user?._id, // ← CRITICAL FIX
         reactions: msg.reactions || [],
       }));
+
       setMessages(conversation._id, processedMessages);
     } catch (error) {
       console.error("Failed to load messages:", error);
@@ -100,11 +108,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   };
 
   const scrollToBottom = () => {
-    setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }, 100);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleMarkAsRead = async () => {
@@ -126,25 +130,20 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
 
     setInputValue("");
     stopTyping(conversation._id);
-
-    // Focus back to input
     inputRef.current?.focus();
   };
 
   const handleTyping = (value: string) => {
     setInputValue(value);
 
-    // Start typing indicator
     if (!typingTimeoutRef.current) {
       startTyping(conversation._id);
     }
 
-    // Clear previous timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    // Stop typing after 3s of inactivity
     typingTimeoutRef.current = setTimeout(() => {
       stopTyping(conversation._id);
       typingTimeoutRef.current = null;
@@ -154,7 +153,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const handleFileUpload = async (file: File, type: "image" | "file") => {
     if (!file) return;
 
-    // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -166,10 +164,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
 
     setUploading(true);
     try {
-      console.log("Uploading file:", file.name, file.type, file.size);
-
       const uploadData = await uploadFile(file);
-      console.log("Upload successful:", uploadData);
 
       sendMessage({
         conversationId: conversation._id,
@@ -208,7 +203,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       }
       handleFileUpload(file, "image");
     }
-    // Reset input
     e.target.value = "";
   };
 
@@ -217,7 +211,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     if (file) {
       handleFileUpload(file, "file");
     }
-    // Reset input
     e.target.value = "";
   };
 
@@ -264,21 +257,18 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Debug component - remove sau khi fix */}
-      {/* <ReactionDebug conversationId={conversation._id} /> */}
-
+    <div className="w-full flex flex-col h-[100vh] justify-between bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between p-4 border-b bg-white">
         <div className="flex items-center gap-3">
           <div className="relative">
             <Avatar className="w-12 h-12">
               <AvatarImage
-                src={conversation.partner.photos[0]}
-                alt={conversation.partner.name}
+                src={conversation?.partner?.photos[0]}
+                alt={conversation?.partner?.name}
               />
               <AvatarFallback>
-                {conversation.partner.name.charAt(0)}
+                {conversation?.partner?.name?.charAt(0)}
               </AvatarFallback>
             </Avatar>
             {isPartnerOnline && (
@@ -296,7 +286,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
             <Phone size={20} />
@@ -326,51 +315,64 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full p-4" ref={scrollRef}>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
-            </div>
-          ) : conversationMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <p>No messages yet</p>
-              <p className="text-sm mt-2">
-                Say hi to start the conversation! 👋
-              </p>
-            </div>
-          ) : (
-            <>
-              {conversationMessages.map((message) => (
-                <MessageBubble
-                  key={message._id}
-                  message={message}
-                  onReact={(emoji) => reactToMessage(message._id, emoji)}
-                  onDelete={() => deleteMessageSocket(message._id)}
-                />
-              ))}
+      {/* Messages - Messenger Style */}
+      <div className="flex-1 overflow-hidden bg-gray-50">
+        <ScrollArea className="h-full">
+          <div className="p-4 space-y-2">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+              </div>
+            ) : conversationMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500 py-20">
+                <p>No messages yet</p>
+                <p className="text-sm mt-2">
+                  Say hi to start the conversation! 👋
+                </p>
+              </div>
+            ) : (
+              <>
+                {conversationMessages.map((message, index) => {
+                  // Check if we need to show avatar (first message or different sender from previous)
+                  const showAvatar =
+                    index === 0 ||
+                    conversationMessages[index - 1].sender._id !==
+                      message.sender._id;
 
-              {/* Typing indicator */}
-              {typingStatus?.isTyping && (
-                <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={conversation.partner.photos[0]} />
-                  </Avatar>
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                  return (
+                    <MessageBubble
+                      key={message._id}
+                      message={message}
+                      showAvatar={showAvatar}
+                      onReact={(emoji) => reactToMessage(message._id, emoji)}
+                      onDelete={() => deleteMessageSocket(message._id)}
+                    />
+                  );
+                })}
+
+                {/* Typing indicator */}
+                {typingStatus?.isTyping && (
+                  <div className="flex items-center gap-2 text-gray-500 text-sm">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={conversation.partner.photos[0]} />
+                    </Avatar>
+                    <div className="flex gap-1 bg-gray-200 rounded-full px-3 py-2">
+                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                )}
+
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
         </ScrollArea>
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t bg-gray-50">
+      <div className="p-4 border-t bg-white">
         {uploading && (
           <div className="mb-2 text-sm text-gray-600 flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -379,7 +381,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
         )}
 
         <div className="flex items-center gap-2">
-          {/* Image upload */}
           <label className="cursor-pointer">
             <input
               type="file"
@@ -395,7 +396,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             </Button>
           </label>
 
-          {/* File upload */}
           <label className="cursor-pointer">
             <input
               type="file"
@@ -410,7 +410,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             </Button>
           </label>
 
-          {/* Text input */}
           <Input
             ref={inputRef}
             value={inputValue}
@@ -422,21 +421,20 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
               }
             }}
             placeholder="Type a message..."
-            className="flex-1"
+            className="flex-1 rounded-full"
             disabled={uploading}
           />
 
-          {/* Quiz Invite Button */}
           <QuizInviteButtonChat
             conversationId={conversation._id}
             matchId={conversation.matchId}
           />
 
-          {/* Send button */}
           <Button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || uploading}
-            className="bg-rose-500 hover:bg-rose-600"
+            className="bg-rose-500 hover:bg-rose-600 rounded-full"
+            size="icon"
           >
             <Send size={20} />
           </Button>

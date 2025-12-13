@@ -1,4 +1,4 @@
-// services/match/match.api.ts (Updated)
+// services/match/match.api.ts
 import userService from "../config";
 
 export const getAllUsers = async () => {
@@ -23,8 +23,20 @@ export const createUser = async (user: {
 // ===== MATCHING ENDPOINTS =====
 
 // Get recommendations
-export const getRecommendationPartner = async () => {
-  const { data } = await userService.get(`/matching/recommendations`);
+export const getRecommendationPartner = async (filters?: {
+  minAge?: number;
+  maxAge?: number;
+  gender?: "Male" | "Female" | "Non-binary" | "Other";
+}) => {
+  const params = new URLSearchParams();
+
+  if (filters?.minAge) params.append("minAge", filters.minAge.toString());
+  if (filters?.maxAge) params.append("maxAge", filters.maxAge.toString());
+  if (filters?.gender) params.append("gender", filters.gender);
+
+  const { data } = await userService.get(
+    `/matching/recommendations${params.toString() ? `?${params.toString()}` : ""}`,
+  );
   return data;
 };
 
@@ -43,6 +55,14 @@ export const passUser = async (targetUserId: string) => {
 // Get all matches
 export const getMatches = async () => {
   const { data } = await userService.get(`/matching/matches`);
+  return data;
+};
+
+// ===== PREMIUM FEATURE =====
+
+// Get likes received (Premium only)
+export const getLikesReceived = async () => {
+  const { data } = await userService.get(`/matching/likes-received`);
   return data;
 };
 

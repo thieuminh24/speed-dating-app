@@ -1,4 +1,5 @@
-// src/app/chat/components/ChatList.tsx
+// src/app/chat/components/ChatList.tsx - FIXED VERSION
+
 "use client";
 
 import { useChatStore, Conversation } from "@/store/chat.store";
@@ -9,10 +10,12 @@ import { formatDistanceToNow } from "date-fns";
 import { MessageCircle } from "lucide-react";
 
 interface ChatListProps {
-  onSelectConversation: (conversation?: Conversation) => void;
+  onSelectConversation: (conversation: Conversation) => void; // ← Remove optional
 }
 
-export default function ChatList({ onSelectConversation }: ChatListProps) {
+export default function ChatList({
+  onSelectConversation = () => {},
+}: ChatListProps) {
   const { conversations, activeConversation, onlineUsers } = useChatStore();
 
   const sortedConversations = [...conversations].sort((a, b) => {
@@ -23,7 +26,7 @@ export default function ChatList({ onSelectConversation }: ChatListProps) {
 
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500">
+      <div className="flex flex-col items-center justify-center h-full text-gray-500 py-20">
         <MessageCircle size={48} className="mb-4 opacity-50" />
         <p className="text-sm">No conversations yet</p>
         <p className="text-xs mt-2">Start matching to begin chatting!</p>
@@ -33,7 +36,7 @@ export default function ChatList({ onSelectConversation }: ChatListProps) {
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-2 p-4">
+      <div className="space-y-1 p-2">
         {sortedConversations.map((conversation) => {
           const isActive = activeConversation?._id === conversation._id;
           const isOnline = onlineUsers.has(conversation.partner._id);
@@ -45,18 +48,18 @@ export default function ChatList({ onSelectConversation }: ChatListProps) {
               className={`
                 flex items-center gap-3 p-3 rounded-lg cursor-pointer
                 transition-all duration-200
-                ${isActive ? "bg-rose-50 border-2 border-rose-200" : "hover:bg-gray-50"}
+                ${isActive ? "bg-rose-50 border-2 border-rose-200" : "hover:bg-gray-50 border-2 border-transparent"}
               `}
             >
               {/* Avatar with online indicator */}
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <Avatar className="w-14 h-14">
                   <AvatarImage
                     src={conversation.partner.photos[0]}
                     alt={conversation.partner.name}
                   />
                   <AvatarFallback>
-                    {conversation.partner.name.charAt(0)}
+                    {conversation?.partner?.name?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 {isOnline && (
@@ -71,7 +74,7 @@ export default function ChatList({ onSelectConversation }: ChatListProps) {
                     {conversation.partner.name}
                   </h3>
                   {conversation.lastMessageAt && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
                       {formatDistanceToNow(
                         new Date(conversation.lastMessageAt),
                         {
@@ -82,7 +85,7 @@ export default function ChatList({ onSelectConversation }: ChatListProps) {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex">
                   <p className="text-sm text-gray-600 truncate">
                     {conversation.lastMessage?.isMine && "You: "}
                     {conversation.lastMessage?.content || "No messages yet"}
@@ -90,7 +93,7 @@ export default function ChatList({ onSelectConversation }: ChatListProps) {
                   {conversation.unreadCount > 0 && (
                     <Badge
                       variant="destructive"
-                      className="ml-2 rounded-full h-5 min-w-[20px] flex items-center justify-center"
+                      className="ml-2 rounded-full h-5 min-w-[20px] flex items-center justify-center flex-shrink-0"
                     >
                       {conversation.unreadCount}
                     </Badge>

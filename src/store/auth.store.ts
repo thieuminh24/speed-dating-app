@@ -1,4 +1,4 @@
-// src/store/auth.store.ts
+// store/auth.store.ts
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -8,17 +8,24 @@ type UserAuthData = {
   email: string;
   photos: string[];
   avatar?: string;
+  isPremium?: boolean;
+  subscriptionTier?: "Free" | "Premium" | "VIP";
+  premiumUntil?: string;
+  role?: "user" | "admin";
+  authProvider?: "local" | "google";
+  isNewUser?: boolean;
 };
 
 type AuthState = {
   token: string | null;
   user: UserAuthData | null;
   isAuthenticated: boolean;
-  isHydrated: boolean; // ← RÕ RÀNG HƠN isReady
+  isHydrated: boolean;
 
   login: (token: string, user: UserAuthData) => void;
   logout: () => void;
-  hydrate: () => void; // ← Gọi 1 lần duy nhất
+  hydrate: () => void;
+  updateUser: (user: Partial<UserAuthData>) => void;
 };
 
 export const useAuth = create<AuthState>()(
@@ -49,6 +56,21 @@ export const useAuth = create<AuthState>()(
       },
 
       hydrate: () => set({ isHydrated: true }),
+
+      // ĐÃ SỬA: Tự động cập nhật avatar khi photos thay đổi
+      updateUser: (userData) =>
+        set((state) => {
+          if (!state.user) return state;
+
+          const updatedUser = { ...state.user, ...userData };
+
+          // Nếu có thay đổi photos → cập nhật avatar luôn
+          if (userData.photos !== undefined) {
+            updatedUser.avatar = userData.photos[0] || "";
+          }
+
+          return { user: updatedUser };
+        }),
     }),
     {
       name: "auth-v2",
@@ -58,7 +80,6 @@ export const useAuth = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.token ? true : false,
       }),
-      // TỰ ĐỘNG GỌI hydrate() SAU KHI ĐỌC XONG
       onRehydrateStorage: () => (state) => {
         state?.hydrate();
       },

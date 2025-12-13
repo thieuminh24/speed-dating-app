@@ -143,7 +143,7 @@ export default function QuizWaitingPage() {
 
               <Button
                 variant="ghost"
-                onClick={() => router.push("/matches")}
+                onClick={() => router.push("/app")}
                 className="w-full"
               >
                 Back to Matches

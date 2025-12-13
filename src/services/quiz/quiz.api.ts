@@ -1,44 +1,94 @@
-// src/services/quiz/quiz.api.ts
+// src/services/quiz/quiz.userService.ts
 import userService from "../config";
 
-// Create quiz session (invite partner)
-export const createQuizSession = async (matchId: string) => {
-  const { data } = await userService.post("/quiz/sessions", { matchId });
-  return data;
+export interface QuizAnswer {
+  questionId: string;
+  selectedOption: string;
+}
+
+export interface CreateQuizSessionDto {
+  matchId: string;
+  conversationId?: string;
+}
+
+export const createQuizSession = async (
+  matchId: string,
+  conversationId?: string,
+) => {
+  console.log("API: Creating quiz session", { matchId, conversationId });
+
+  const payload: CreateQuizSessionDto = { matchId };
+  if (conversationId) {
+    payload.conversationId = conversationId;
+  }
+
+  const response = await userService.post("/quiz/sessions", payload);
+  console.log("API: Quiz session created", response.data);
+  return response.data;
 };
 
-// Accept quiz invitation
-export const acceptQuiz = async (sessionId: string) => {
-  const { data } = await userService.post(`/quiz/sessions/${sessionId}/accept`);
-  return data;
+export const acceptQuizSession = async (sessionId: string) => {
+  console.log("API: Accepting quiz session", sessionId);
+
+  const response = await userService.post(`/quiz/sessions/${sessionId}/accept`);
+  console.log("API: Quiz accepted", response.data);
+  return response.data;
 };
 
-// Get quiz session with questions
 export const getQuizSession = async (sessionId: string) => {
-  const { data } = await userService.get(`/quiz/sessions/${sessionId}`);
-  return data;
+  console.log("API: Getting quiz session", sessionId);
+
+  const response = await userService.get(`/quiz/sessions/${sessionId}`);
+  console.log("API: Quiz session retrieved", response.data);
+  return response.data;
 };
 
-// Submit quiz answers
 export const submitQuizAnswers = async (
   sessionId: string,
-  answers: Array<{ questionId: string; selectedOption: string }>,
+  answers: QuizAnswer[],
 ) => {
-  const { data } = await userService.post(
-    `/quiz/sessions/${sessionId}/submit`,
-    { answers },
+  console.log("API: Submitting quiz answers", {
+    sessionId,
+    answerCount: answers.length,
+  });
+  console.log("API: Answers payload:", answers);
+
+  // Validate answers before sending
+  if (!answers || answers.length === 0) {
+    throw new Error("No answers to submit");
+  }
+
+  const invalidAnswers = answers.filter(
+    (a) => !a.questionId || !a.selectedOption,
   );
-  return data;
+  if (invalidAnswers.length > 0) {
+    console.error("Invalid answers:", invalidAnswers);
+    throw new Error("Some answers are missing questionId or selectedOption");
+  }
+
+  const response = await userService.post(
+    `/quiz/sessions/${sessionId}/submit`,
+    {
+      answers,
+    },
+  );
+
+  console.log("API: Answers submitted", response.data);
+  return response.data;
 };
 
-// Get quiz result
 export const getQuizResult = async (sessionId: string) => {
-  const { data } = await userService.get(`/quiz/sessions/${sessionId}/result`);
-  return data;
+  console.log("API: Getting quiz result", sessionId);
+
+  const response = await userService.get(`/quiz/sessions/${sessionId}/result`);
+  console.log("API: Result retrieved", response.data);
+  return response.data;
 };
 
-// Get quiz history
-export const getQuizHistory = async () => {
-  const { data } = await userService.get("/quiz/my-history");
-  return data;
+export const getUserQuizHistory = async () => {
+  console.log("API: Getting user quiz history");
+
+  const response = await userService.get("/quiz/my-history");
+  console.log("API: History retrieved", response.data);
+  return response.data;
 };

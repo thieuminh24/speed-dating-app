@@ -1,4 +1,4 @@
-// app/login/page.tsx
+// app/login/LoginForm.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -9,7 +9,6 @@ import Lottie from "lottie-react";
 import LoadingAnimation from "../../../public/animations/Loading-1.json";
 import LoadingMain from "../../../public/animations/Loading-3.json";
 import { Quicksand } from "next/font/google";
-import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
 import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +16,7 @@ import { login } from "@/services/auth/auth.api";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/store/auth.store";
+import GoogleLoginButton from "./components/GoogleLoginButton";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -29,7 +29,7 @@ type LoginForm = {
   password: string;
 };
 
-export default function LoginPage() {
+export default function LoginForm() {
   const {
     register,
     handleSubmit,
@@ -51,7 +51,8 @@ export default function LoginPage() {
     try {
       const res = await login(data);
       const { token, ...user } = res;
-      loginStore(token, user); // ← Zustand lưu + persist
+      console.log("res", res);
+      loginStore(token, user);
       router.push("/app");
     } catch (err: any) {
       const message =
@@ -60,6 +61,10 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleError = (error: string) => {
+    setError("root", { message: error });
   };
 
   return (
@@ -174,19 +179,16 @@ export default function LoginPage() {
 
           {/* Social Login */}
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1 flex items-center justify-center gap-2"
-              size="lg"
-              type="button"
-            >
-              <FcGoogle size={20} /> Google
-            </Button>
+            {/* ✅ GOOGLE LOGIN - Đã tích hợp */}
+            <GoogleLoginButton onError={handleGoogleError} />
+
+            {/* Facebook - Để sau */}
             <Button
               variant="outline"
               className="flex-1 flex items-center justify-center gap-2 text-blue-600"
               size="lg"
               type="button"
+              disabled
             >
               <FaFacebookF size={20} /> Facebook
             </Button>
@@ -203,7 +205,7 @@ export default function LoginPage() {
             <p>
               Chưa có tài khoản?{" "}
               <a
-                href="/register"
+                href="/registration"
                 className="text-blue-600 font-medium hover:underline"
               >
                 Đăng ký ngay

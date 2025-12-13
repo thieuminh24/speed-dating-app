@@ -43,7 +43,10 @@ export function StoryFeed() {
 
   return (
     <>
-      <div className="flex gap-4 overflow-x-auto pb-4 px-4">
+      <div
+        style={{ zIndex: 2000 }}
+        className="flex gap-4 overflow-x-auto pb-4 px-4"
+      >
         {/* My Story */}
         <div className="flex flex-col items-center gap-2 shrink-0">
           <button

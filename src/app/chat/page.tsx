@@ -1,4 +1,5 @@
-// src/app/chat/page.tsx
+// src/app/chat/page.tsx - FIXED VERSION
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,9 +11,10 @@ import ChatWindow from "./components/ChatWindow";
 import { Card, CardContent } from "@/components/ui/card";
 import { MessageSquare, Loader2 } from "lucide-react";
 import Layout from "@/components/layout";
+import AuthGuard from "@/components/common/AuthGuard/AuthGuard";
 
 export default function ChatPage() {
-  const { token, user } = useAuth();
+  const { token, user } = useAuth(); // ← Get user from auth
   const {
     conversations,
     activeConversation,
@@ -23,28 +25,29 @@ export default function ChatPage() {
     disconnectSocket,
   } = useChatStore();
 
+  console.log("activeConversation", activeConversation);
+
   const [isLoading, setIsLoading] = useState(true);
 
   // Initialize socket & load conversations
   useEffect(() => {
-    if (!token) return;
+    if (!token || !user) return;
 
-    // Connect socket
-    initializeSocket(token);
+    // ===== FIX: Pass user info to socket initialization =====
+    initializeSocket(token, user);
 
-    // Load conversations
     loadConversations();
 
-    // Cleanup on unmount
     return () => {
       disconnectSocket();
     };
-  }, [token]);
+  }, [token, user]); // ← Add user dependency
 
   const loadConversations = async () => {
     setIsLoading(true);
     try {
       const data = await getConversations();
+      console.log("Loaded conversations:", data);
       setConversations(data);
     } catch (error) {
       console.error("Failed to load conversations:", error);
@@ -71,22 +74,19 @@ export default function ChatPage() {
   }
 
   return (
-    <Layout
-      asideChildren={
-        <div className="w-full">
-          <ChatList onSelectConversation={handleSelectConversation} />
-        </div>
-      }
-      mainChildren={
-        <div className="flex w-full h-full">
-          {/* Chat List - Left Sidebar */}
-
-          {/* Chat Window - Main Area */}
-          <div className="flex-1">
+    <AuthGuard>
+      <Layout
+        asideChildren={
+          <div className="w-full h-full">
+            <ChatList onSelectConversation={handleSelectConversation} />
+          </div>
+        }
+        mainChildren={
+          <div className="flex w-full h-full">
             {activeConversation ? (
               <ChatWindow conversation={activeConversation} />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 w-full">
                 <MessageSquare size={64} className="mb-4 opacity-50" />
                 <p className="text-lg">
                   Select a conversation to start chatting
@@ -94,8 +94,8 @@ export default function ChatPage() {
               </div>
             )}
           </div>
-        </div>
-      }
-    />
+        }
+      />
+    </AuthGuard>
   );
 }

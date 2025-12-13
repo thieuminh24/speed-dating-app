@@ -1,30 +1,28 @@
-// src/store/chat.store.ts
+// src/store/chat.store.ts - COMPLETE FIXED VERSION
 import { create } from "zustand";
-import { socketManager } from "@/lib/socket";
-
-export type MessageType = "text" | "image" | "file";
-export type MessageStatus = "sent" | "delivered" | "read";
+import { io, Socket } from "socket.io-client";
+import { toast } from "@/hook/useToast";
 
 export interface Message {
   _id: string;
-  type: MessageType;
+  type: "text" | "image" | "file" | "quiz_invite";
   content?: string;
   fileUrl?: string;
   fileName?: string;
+  quizSessionId?: string;
   sender: {
     _id: string;
     name: string;
     photos: string[];
   };
   isMine: boolean;
-  reactions?: Array<{
+  reactions: Array<{
     userId: string;
     userName: string;
     emoji: string;
   }>;
-  readStatus?: MessageStatus;
+  readStatus?: string;
   createdAt: string;
-  replyTo?: any;
 }
 
 export interface Conversation {
@@ -34,66 +32,69 @@ export interface Conversation {
     _id: string;
     name: string;
     photos: string[];
-    lastActive?: string;
+    lastActive?: Date;
   };
   lastMessage?: {
     _id: string;
-    content: string;
-    type: MessageType;
+    content?: string;
+    type: string;
     isMine: boolean;
     createdAt: string;
   };
   unreadCount: number;
-  status: "active" | "archived" | "blocked";
+  status: string;
   lastMessageAt?: string;
 }
 
-export interface TypingStatus {
-  conversationId: string;
+interface TypingUser {
   userId: string;
   userName: string;
   isTyping: boolean;
 }
 
-interface ChatState {
-  // State
+interface ChatStore {
+  socket: Socket | null;
+  isConnected: boolean;
   conversations: Conversation[];
   activeConversation: Conversation | null;
   messages: Record<string, Message[]>;
-  typingUsers: Record<string, TypingStatus>;
+  typingUsers: Record<string, TypingUser>;
   onlineUsers: Set<string>;
-  isConnected: boolean;
+
+  // Match notifications
+  matchNotifications: Array<{
+    matchId: string;
+    matchedUser: {
+      _id: string;
+      name: string;
+      photos: string[];
+    };
+  }>;
 
   // Actions
+  initializeSocket: (token: string, currentUser?: { _id: string }) => void;
+  disconnectSocket: () => void;
   setConversations: (conversations: Conversation[]) => void;
   setActiveConversation: (conversation: Conversation | null) => void;
-  addMessage: (conversationId: string, message: Message) => void;
   setMessages: (conversationId: string, messages: Message[]) => void;
-  updateMessage: (
+  addMessage: (conversationId: string, message: Message) => void;
+  updateMessageReactions: (
     conversationId: string,
     messageId: string,
-    updates: Partial<Message>,
+    reactions: Message["reactions"],
   ) => void;
   deleteMessage: (conversationId: string, messageId: string) => void;
-  markAsRead: (conversationId: string) => void;
-  setTyping: (typing: TypingStatus) => void;
-  clearTyping: (conversationId: string) => void;
-  setUserOnline: (userId: string) => void;
-  setUserOffline: (userId: string) => void;
-  setConnected: (connected: boolean) => void;
-  clearChat: () => void;
 
-  // Socket Actions
-  initializeSocket: (token: string) => void;
-  disconnectSocket: () => void;
+  // Socket events
   joinConversation: (conversationId: string) => void;
+  leaveConversation: (conversationId: string) => void;
   sendMessage: (data: {
     conversationId: string;
-    type: MessageType;
+    type: string;
     content?: string;
     fileUrl?: string;
     fileName?: string;
-    fileSize?: number;
+    quizSessionId?: string;
   }) => void;
   startTyping: (conversationId: string) => void;
   stopTyping: (conversationId: string) => void;
@@ -101,234 +102,284 @@ interface ChatState {
   deleteMessageSocket: (messageId: string) => void;
   unmatchUser: (conversationId: string) => void;
   blockUser: (conversationId: string, userId: string) => void;
+
+  // Match notifications
+  addMatchNotification: (data: {
+    matchId: string;
+    matchedUser: { _id: string; name: string; photos: string[] };
+  }) => void;
+  clearMatchNotifications: () => void;
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
-  // Initial State
+export const useChatStore = create<ChatStore>((set, get) => ({
+  socket: null,
+  isConnected: false,
   conversations: [],
   activeConversation: null,
   messages: {},
   typingUsers: {},
   onlineUsers: new Set(),
-  isConnected: false,
+  matchNotifications: [],
 
-  // State Actions
-  setConversations: (conversations) => set({ conversations }),
+  initializeSocket: (token: string, currentUser?: { _id: string }) => {
+    const socket = io("http://localhost:4000/chat", {
+      auth: { token },
+      transports: ["websocket"],
+    });
 
-  setActiveConversation: (conversation) =>
-    set({ activeConversation: conversation }),
+    // Store user reference
+    let user = currentUser;
 
-  addMessage: (conversationId, message) =>
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [conversationId]: [...(state.messages[conversationId] || []), message],
-      },
-      conversations: state.conversations.map((conv) =>
+    socket.on("connect", () => {
+      console.log("✅ Socket connected");
+      set({ isConnected: true });
+    });
+
+    socket.on("disconnect", () => {
+      console.log("❌ Socket disconnected");
+      set({ isConnected: false });
+    });
+
+    // ===== MATCH NOTIFICATION =====
+    socket.on("match:created", (data) => {
+      console.log("🎉 Match notification received:", data);
+
+      get().addMatchNotification(data);
+
+      toast({
+        title: "It's a Match! 💕",
+        description: `You matched with ${data.matchedUser.name}!`,
+        duration: 5000,
+      });
+    });
+
+    // ===== NEW MESSAGE =====
+    socket.on("message:new", (data) => {
+      console.log("📨 New message:", data);
+
+      const { conversationId, message } = data;
+
+      // Use stored user reference to set isMine
+      get().addMessage(conversationId, {
+        ...message,
+        isMine: message.sender._id === user?._id,
+        reactions: message.reactions || [],
+      });
+
+      // Update conversation's last message
+      const conversations = get().conversations.map((conv) =>
         conv._id === conversationId
           ? {
               ...conv,
               lastMessage: {
                 _id: message._id,
-                content: message.content || "Sent an attachment",
+                content: message.content,
                 type: message.type,
-                isMine: message.isMine,
+                isMine: message.sender._id === user?._id,
                 createdAt: message.createdAt,
               },
-              unreadCount: message.isMine
-                ? conv.unreadCount
-                : conv.unreadCount + 1,
+              unreadCount:
+                get().activeConversation?._id === conversationId
+                  ? conv.unreadCount
+                  : conv.unreadCount + 1,
+              lastMessageAt: message.createdAt,
             }
           : conv,
-      ),
-    })),
-
-  setMessages: (conversationId, messages) =>
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [conversationId]: messages,
-      },
-    })),
-
-  updateMessage: (conversationId, messageId, updates) =>
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [conversationId]: state.messages[conversationId]?.map((msg) =>
-          msg._id === messageId ? { ...msg, ...updates } : msg,
-        ),
-      },
-    })),
-
-  deleteMessage: (conversationId, messageId) =>
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [conversationId]: state.messages[conversationId]?.filter(
-          (msg) => msg._id !== messageId,
-        ),
-      },
-    })),
-
-  markAsRead: (conversationId) =>
-    set((state) => ({
-      conversations: state.conversations.map((conv) =>
-        conv._id === conversationId ? { ...conv, unreadCount: 0 } : conv,
-      ),
-    })),
-
-  setTyping: (typing) =>
-    set((state) => ({
-      typingUsers: {
-        ...state.typingUsers,
-        [typing.conversationId]: typing,
-      },
-    })),
-
-  clearTyping: (conversationId) =>
-    set((state) => {
-      const newTyping = { ...state.typingUsers };
-      delete newTyping[conversationId];
-      return { typingUsers: newTyping };
-    }),
-
-  setUserOnline: (userId) =>
-    set((state) => ({
-      onlineUsers: new Set([...state.onlineUsers, userId]),
-    })),
-
-  setUserOffline: (userId) =>
-    set((state) => {
-      const newOnline = new Set(state.onlineUsers);
-      newOnline.delete(userId);
-      return { onlineUsers: newOnline };
-    }),
-
-  setConnected: (connected) => set({ isConnected: connected }),
-
-  clearChat: () =>
-    set({
-      conversations: [],
-      activeConversation: null,
-      messages: {},
-      typingUsers: {},
-      onlineUsers: new Set(),
-      isConnected: false,
-    }),
-
-  // Socket Actions
-  initializeSocket: (token) => {
-    const socket = socketManager.connect(token);
-    set({ isConnected: true });
-
-    // Listen to events
-    socket.on(
-      "message:new",
-      (data: { conversationId: string; message: any }) => {
-        // Get current user ID from auth store to set isMine correctly
-        const currentUserId = localStorage.getItem("auth-v2")
-          ? JSON.parse(localStorage.getItem("auth-v2") || "{}").state?.user?._id
-          : null;
-
-        const message: Message = {
-          ...data.message,
-          isMine: data.message.sender._id === currentUserId,
-        };
-
-        get().addMessage(data.conversationId, message);
-      },
-    );
-
-    socket.on("typing:update", (data: TypingStatus) => {
-      if (data.isTyping) {
-        get().setTyping(data);
-      } else {
-        get().clearTyping(data.conversationId);
-      }
-    });
-
-    socket.on(
-      "message:read",
-      (data: { conversationId: string; userId: string }) => {
-        get().markAsRead(data.conversationId);
-      },
-    );
-
-    socket.on("message:reaction", (data: any) => {
-      const { conversationId, messageId, reactions } = data;
-
-      // Update message with full reactions list
-      const state = get();
-      const conversationMessages = state.messages[conversationId] || [];
-
-      const updatedMessages = conversationMessages.map((msg) =>
-        msg._id === messageId ? { ...msg, reactions: reactions || [] } : msg,
       );
 
-      get().setMessages(conversationId, updatedMessages);
+      // Sort conversations by lastMessageAt
+      const sorted = conversations.sort((a, b) => {
+        const dateA = new Date(a.lastMessageAt || 0).getTime();
+        const dateB = new Date(b.lastMessageAt || 0).getTime();
+        return dateB - dateA;
+      });
+
+      set({ conversations: sorted });
     });
 
-    socket.on(
-      "message:deleted",
-      (data: { conversationId: string; messageId: string }) => {
-        get().deleteMessage(data.conversationId, data.messageId);
-      },
-    );
-
-    socket.on("user:online", (data: { userId: string }) => {
-      get().setUserOnline(data.userId);
+    // ===== TYPING INDICATOR =====
+    socket.on("typing:update", (data) => {
+      set((state) => ({
+        typingUsers: {
+          ...state.typingUsers,
+          [data.conversationId]: {
+            userId: data.userId,
+            userName: data.userName || "Someone",
+            isTyping: data.isTyping,
+          },
+        },
+      }));
     });
 
-    socket.on("user:offline", (data: { userId: string }) => {
-      get().setUserOffline(data.userId);
+    // ===== MESSAGE REACTIONS =====
+    socket.on("message:reaction", (data) => {
+      console.log("👍 Reaction update:", data);
+      get().updateMessageReactions(
+        data.conversationId,
+        data.messageId,
+        data.reactions,
+      );
     });
 
-    socket.on("conversation:unmatched", (data: any) => {
-      console.log("Unmatched:", data);
-      // Handle unmatch
+    // ===== MESSAGE DELETED =====
+    socket.on("message:deleted", (data) => {
+      console.log("🗑️ Message deleted:", data);
+      get().deleteMessage(data.conversationId, data.messageId);
     });
 
-    socket.on("user:blocked", (data: any) => {
-      console.log("Blocked:", data);
-      // Handle block
+    // ===== USER ONLINE/OFFLINE =====
+    socket.on("user:online", (data) => {
+      set((state) => {
+        const newOnlineUsers = new Set(state.onlineUsers);
+        newOnlineUsers.add(data.userId);
+        return { onlineUsers: newOnlineUsers };
+      });
     });
+
+    socket.on("user:offline", (data) => {
+      set((state) => {
+        const newOnlineUsers = new Set(state.onlineUsers);
+        newOnlineUsers.delete(data.userId);
+        return { onlineUsers: newOnlineUsers };
+      });
+    });
+
+    // ===== CONVERSATION UNMATCHED =====
+    socket.on("conversation:unmatched", (data) => {
+      toast({
+        title: "Unmatched",
+        description: "You have been unmatched",
+        variant: "destructive",
+      });
+
+      // Remove conversation
+      set((state) => ({
+        conversations: state.conversations.filter(
+          (c) => c._id !== data.conversationId,
+        ),
+        activeConversation:
+          state.activeConversation?._id === data.conversationId
+            ? null
+            : state.activeConversation,
+      }));
+    });
+
+    // ===== USER BLOCKED =====
+    socket.on("user:blocked", (data) => {
+      toast({
+        title: "Blocked",
+        description: "You have been blocked",
+        variant: "destructive",
+      });
+    });
+
+    set({ socket });
   },
 
   disconnectSocket: () => {
-    socketManager.disconnect();
-    set({ isConnected: false });
+    const { socket } = get();
+    if (socket) {
+      socket.disconnect();
+      set({ socket: null, isConnected: false });
+    }
   },
 
+  setConversations: (conversations) => set({ conversations }),
+
+  setActiveConversation: (conversation) =>
+    set({ activeConversation: conversation }),
+
+  setMessages: (conversationId, messages) =>
+    set((state) => ({
+      messages: { ...state.messages, [conversationId]: messages },
+    })),
+
+  addMessage: (conversationId, message) =>
+    set((state) => {
+      const existing = state.messages[conversationId] || [];
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: [...existing, message],
+        },
+      };
+    }),
+
+  updateMessageReactions: (conversationId, messageId, reactions) =>
+    set((state) => {
+      const conversationMessages = state.messages[conversationId] || [];
+      const updatedMessages = conversationMessages.map((msg) =>
+        msg._id === messageId ? { ...msg, reactions } : msg,
+      );
+      return {
+        messages: { ...state.messages, [conversationId]: updatedMessages },
+      };
+    }),
+
+  deleteMessage: (conversationId, messageId) =>
+    set((state) => {
+      const conversationMessages = state.messages[conversationId] || [];
+      const updatedMessages = conversationMessages.filter(
+        (msg) => msg._id !== messageId,
+      );
+      return {
+        messages: { ...state.messages, [conversationId]: updatedMessages },
+      };
+    }),
+
+  // ===== SOCKET ACTIONS =====
+
   joinConversation: (conversationId) => {
-    socketManager.emit("conversation:join", { conversationId });
+    const { socket } = get();
+    socket?.emit("conversation:join", { conversationId });
+  },
+
+  leaveConversation: (conversationId) => {
+    const { socket } = get();
+    socket?.emit("conversation:leave", { conversationId });
   },
 
   sendMessage: (data) => {
-    socketManager.emit("message:send", data);
+    const { socket } = get();
+    socket?.emit("message:send", data);
   },
 
   startTyping: (conversationId) => {
-    socketManager.emit("typing:start", { conversationId });
+    const { socket } = get();
+    socket?.emit("typing:start", { conversationId });
   },
 
   stopTyping: (conversationId) => {
-    socketManager.emit("typing:stop", { conversationId });
+    const { socket } = get();
+    socket?.emit("typing:stop", { conversationId });
   },
 
   reactToMessage: (messageId, emoji) => {
-    socketManager.emit("message:react", { messageId, emoji });
+    const { socket } = get();
+    socket?.emit("message:react", { messageId, emoji });
   },
 
   deleteMessageSocket: (messageId) => {
-    socketManager.emit("message:delete", { messageId });
+    const { socket } = get();
+    socket?.emit("message:delete", { messageId });
   },
 
   unmatchUser: (conversationId) => {
-    socketManager.emit("conversation:unmatch", { conversationId });
+    const { socket } = get();
+    socket?.emit("conversation:unmatch", { conversationId });
   },
 
   blockUser: (conversationId, userId) => {
-    socketManager.emit("user:block", { conversationId, userId });
+    const { socket } = get();
+    socket?.emit("user:block", { conversationId, userId });
   },
+
+  // ===== MATCH NOTIFICATIONS =====
+
+  addMatchNotification: (data) =>
+    set((state) => ({
+      matchNotifications: [...state.matchNotifications, data],
+    })),
+
+  clearMatchNotifications: () => set({ matchNotifications: [] }),
 }));

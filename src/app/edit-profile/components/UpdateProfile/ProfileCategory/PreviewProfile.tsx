@@ -11,32 +11,29 @@ const PreviewProfile = ({ profile }: { profile: Profile | null }) => {
   return (
     <>
       <div
-        className="rounded-4xl border-1 py-2 px-4 mt-6 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition"
+        className="rounded-4xl border-1 py-2 px-4 mt-6 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition mb-4"
         onClick={() => setIsCardOpen(true)}
       >
         <p>Preview Profile</p>
         <ChevronRight />
       </div>
-      <Dialog open={isCardOpen}>
+
+      <Dialog open={isCardOpen} onOpenChange={setIsCardOpen}>
         <DialogContent
           className="
-      w-full 
-      max-w-lg 
-      sm:max-w-xl 
-      md:max-w-3xl 
-      lg:max-w-6xl 
-      h-[85vh] 
-      p-0 
-      overflow-hidden 
-      rounded-3xl
-    "
+            w-full 
+            max-w-lg 
+            sm:max-w-xl 
+            md:max-w-3xl 
+            lg:max-w-6xl 
+            h-[85vh] 
+            p-0 
+            overflow-hidden 
+            rounded-3xl
+          "
           style={{ zIndex: 1000 }}
         >
-          {profile && (
-            <>
-              <CardInfo data={profile} />
-            </>
-          )}
+          {profile && <CardInfo data={profile} />}
         </DialogContent>
       </Dialog>
     </>
